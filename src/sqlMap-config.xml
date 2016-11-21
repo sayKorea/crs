@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE sqlMapConfig PUBLIC "-//ibatis.apache.org//DTD SQL Map Config 2.0//EN"
+    "http://ibatis.apache.org/dtd/sql-map-config-2.dtd">
+
+<sqlMapConfig>
+
+    <settings enhancementEnabled="true" maxTransactions="20"
+        maxRequests="32" maxSessions="10" useStatementNamespaces="true"/>
+
+	<typeAlias alias="dbmap"
+        type="fatca.common.util.FTCCiHashMap"/>
+
+	<typeAlias alias="string"
+        type="java.lang.String"/>
+    
+    <typeAlias alias="map"
+        type="java.util.Map"/>
+        
+
+	<!--   typeHandler javaType="java.sql.Clob" callback="fatca.common.util.OracleCLOBTypeHandler"/> -->
+
+	<typeHandler javaType="java.util.Date" jdbcType="DATE"
+	                 callback="fatca.common.util.FTCDateTypeHandler"/>
+
+
+
+	<transactionManager type="JDBC">
+	
+	      <dataSource type="JNDI">
+	      	<property name="DataSource" value="FATDS" />
+	      </dataSource>
+	      
+    </transactionManager>
+
+	<sqlMap resource="resources/FTCsystem_SqlMap.xml" />
+	<sqlMap resource="resources/FTCacipReady_SqlMap.xml" />
+	<sqlMap resource="resources/FTCacipMonitor_SqlMap.xml" />
+	<sqlMap resource="resources/FTCacipResult_SqlMap.xml" />
+	<sqlMap resource="resources/FTCacipPersonalTarget_SqlMap.xml" />
+	<sqlMap resource="resources/FTCacipCompanyTarget_SqlMap.xml" />
+	<sqlMap resource="resources/FTCacipReport_SqlMap.xml" />
+</sqlMapConfig>

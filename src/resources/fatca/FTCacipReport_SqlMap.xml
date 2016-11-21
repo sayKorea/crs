@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="EUC-KR"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="acipreport">
+	
+	<select id="selectPersonalReportList" resultClass="dbmap" parameterClass="map">
+	/** acipreport.selectPersonalReportList */
+		SELECT * FROM (
+			SELECT ROWNUM_.* , ROWNUM AS RNUM FROM 
+			(	
+		        SELECT a.crym, 
+				       a.csno, 
+				       a.cust_seq,
+				       a.sls_brno,
+				       (select BRC_NM from TB_COAM_BRBAS where BRNO = a.sls_brno  and clo_brc_yn='N') as sls_brnm, 
+				       a.smpsn_id, a.cust_dvcd, 
+				       a.fatca_cfrrpt_seq, 
+				       a.fatca_rept_csno,
+				       a.cust_nm, 
+				       a.bird, 
+				       a.fatca_eng_fsn, 
+				       a.fatca_enm,
+				       a.fatca_txpayr_no as per_txpayr_no, 
+				       a.fatca_prsnl_eng_addr as address, 
+				       (select vld_val_nm from tb_ftcd_cddtl where crym='000000' and cd_idtf_id='901' and vld_val='NM') as giin_name,
+				    	(select vld_val_nm from tb_ftcd_cddtl where crym='000000' and cd_idtf_id='901' and vld_val='GIIN') as giin_no,
+				       c.acno,
+				       c.acnt_balamt,
+				       c.ntrst_amt,
+				       c.shramt,
+				       c.tot_ncm_rbam,
+				       c.etcm,
+				       COUNT(*) OVER() AS totalcnt	
+				FROM TB_FTCM_REPTTRGETPRSNLBAS a,
+					 TB_FTCM_ACIPRSLT b,
+					 TB_FTCM_REPTTRGETACNTBAS c
+				where a.crym = b.crym
+				and a.csno = b.csno
+				and a.crym = c.crym
+				and a.csno = c.csno
+				and a.cust_seq = c.cust_seq			
+
+				<isNotEmpty property="csno">
+		      	AND a.csno = #csno#
+		      	</isNotEmpty>
+		      	<isNotEmpty property="stAmt">
+		      	AND a.DPO_SUMT_USD_CNVT_AMT between #stAmt# and #edAmt#  
+		      	</isNotEmpty>
+				ORDER BY a.crym, sls_brno, a.csno
+			) ROWNUM_
+			WHERE   #pagingEnd# >= ROWNUM  
+		) WHERE RNUM > #pagingStart#
+	</select>
+	
+	
+	
+	<select id="selectCompanyReportList" resultClass="dbmap" parameterClass="map">
+	/** acipreport.selectCompanyReportList */
+		SELECT * FROM (
+			SELECT ROWNUM_.* , ROWNUM AS RNUM FROM 
+			(	
+		        select a.crym,
+					  a.csno,
+					  a.cust_seq,
+					  b.sls_brno,
+				     (select BRC_NM from TB_COAM_BRBAS where BRNO = b.sls_brno  and clo_brc_yn='N') as sls_brnm, 
+					  a.fatca_copr_knm,
+					  a.fatca_copr_enm,
+					  a.fatca_txpayr_no,
+					  a.fatca_copr_eng_addr,
+					  (SELECT vld_val_nm FROM tb_ftcd_cddtl WHERE crym = '000000' AND cd_idtf_id = '901' AND vld_val = 'NM') AS giin_name,
+					  (SELECT vld_val_nm FROM tb_ftcd_cddtl WHERE crym = '000000' AND cd_idtf_id = '901' AND vld_val = 'GIIN') AS giin_no,
+					  e.fatca_enm || ' ' || e.fatca_eng_fsn as per_nm,
+					  e.fatca_prsnl_eng_addr,
+					  e.fatca_txpayr_no as per_txpayr_no ,
+					  c.acno,
+					  c.acnt_balamt,
+					  c.ntrst_amt,
+					  c.shramt,
+					  c.tot_ncm_rbam,
+					  c.etcm,
+					  COUNT (*) OVER () AS totalcnt
+				FROM TB_FTCM_REPTTRGETCOPRBAS a,
+				  	 TB_FTCM_ACIPRSLT b,
+				  	 TB_FTCM_REPTTRGETACNTBAS c,
+					  (
+					    SELECT a.copr_csno,
+					      a.copr_cust_seq,
+					      a.fatca_txpayr_no,
+					      a.fatca_eng_fsn,
+					      a.fatca_enm,
+					      a.fatca_prsnl_eng_addr
+					    FROM TB_CUAH_FATCAOWR a
+					    WHERE (a.copr_csno,
+					           a.copr_cust_seq,
+					           a.fatca_cfrrpt_seq) IN (
+					                                    SELECT copr_csno,
+					                                      copr_cust_seq,
+					                                      MAX (fatca_cfrrpt_seq) AS fatca_cfrrpt_seq
+					                                    FROM TB_CUAH_FATCAOWR
+					                                    GROUP BY copr_csno, copr_cust_seq
+					                                   )
+					          ) e
+				WHERE a.crym = b.crym
+				  AND a.csno = b.csno
+				  AND a.cust_seq = b.cust_seq
+				  AND a.crym = c.crym
+				  AND a.csno = c.csno
+				  AND a.cust_seq = c.cust_seq
+				  AND a.csno = e.copr_csno(+)
+				  AND a.cust_seq = e.copr_cust_seq(+)
+				  AND a.crym = #crym#
+				 <isNotEqual property="slsBrno" compareValue="999">
+				  and b.sls_brno = #slsBrno#
+				 </isNotEqual>
+				 <isNotEmpty property="csno">
+				  AND a.csno = #csno#
+				 </isNotEmpty>
+				 <isNotEmpty property="stAmt">		      	  
+				 </isNotEmpty>
+				ORDER BY a.crym, sls_brno, a.csno
+			) ROWNUM_
+			WHERE   #pagingEnd# >= ROWNUM  
+		) WHERE RNUM > #pagingStart#
+	</select>
+	
+	
+</sqlMap>

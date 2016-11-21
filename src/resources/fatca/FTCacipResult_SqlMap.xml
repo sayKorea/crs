@@ -1,0 +1,629 @@
+<?xml version="1.0" encoding="EUC-KR"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="acipresult">
+
+	<select id="selectPersonalResultList" resultClass="dbmap" parameterClass="map">		
+	/** acipresult.selectPersonalResultList */
+		SELECT * FROM (
+			SELECT ROWNUM_.* , ROWNUM AS RNUM FROM 
+			(	
+				SELECT a.sls_brno,
+				       (SELECT BRC_NM FROM TB_COAM_BRBAS 
+						WHERE clo_brc_yn='N' 
+						and brno = a.sls_brno) as sls_brno_nm,
+				       a.crym,
+				       a.csno,
+				       ( select cust_nm from TB_FTCM_CUSTBAS where csno = a.csno and crym = a.crym and cust_seq = a.cust_seq) AS cust_nm,
+				       ( select rnno from TB_FTCM_CUSTBAS where csno = a.csno and crym = a.crym and cust_seq = a.cust_seq) AS rnno,
+				       TO_CHAR ( SUBSTR (( select rnno from TB_FTCM_CUSTBAS where csno = a.csno and crym = a.crym and cust_seq = a.cust_seq), 1, 6)) || 'XXXXXXX' AS rnno_fmt,
+				       a.fatca_acip_cgp_enob,
+			           (SELECT user_nm FROM TB_COAM_HRUSERBAS where enob = A.fatca_acip_cgp_enob ) as fatca_acip_cgp_ennm,
+				       a.fatca_amt_sct_clacd,
+				       ( select vld_val_nm from TB_FTCD_CDDTL where crym=#crym# and cd_idtf_id = '114' and use_yn = 'Y' and vld_val = a.fatca_amt_sct_clacd ) as fatca_amt_sct_clacd_nm,
+				       a.fatca_cz_acip_rscd,
+				       ( select vld_val_nm from TB_FTCD_CDDTL where crym=#crym# and cd_idtf_id = '116' and use_yn = 'Y' and vld_val = a.fatca_cz_acip_rscd ) as fatca_cz_acip_rscd_nm,
+				       a.fatca_doc_acip_rscd,
+				       ( select vld_val_nm from TB_FTCD_CDDTL where crym=#crym# and cd_idtf_id = '117' and use_yn = 'Y' and vld_val = a.fatca_doc_acip_rscd ) as fatca_doc_acip_rscd_nm,
+				       a.fatca_cfrrpt_acip_rscd,
+				       ( select vld_val_nm from TB_FTCD_CDDTL where crym=#crym# and cd_idtf_id = '119' and use_yn = 'Y' and vld_val = a.fatca_cfrrpt_acip_rscd ) as fatca_cfrrpt_acip_rscd_nm,
+				       a.fatca_iqr_rscd,				       
+                       ( select vld_val_nm from TB_FTCD_CDDTL where crym=#crym# and cd_idtf_id = '118' and use_yn = 'Y' and vld_val = a.fatca_iqr_rscd ) as fatca_iqr_rscd_nm,
+				       a.fatca_rept_trget_dvcd,
+				       ( select vld_val_nm from TB_FTCD_CDDTL where crym=#crym# and cd_idtf_id = '120' and use_yn = 'Y' and vld_val = a.fatca_rept_trget_dvcd ) as fatca_rept_trget_dvcd_nm,
+				       a.fatca_acip_compt_dt,
+				       a.fatca_cust_dvcd,
+				       ( select vld_val_nm from TB_FTCD_CDDTL where crym=#crym# and cd_idtf_id = '115' and use_yn = 'Y' and vld_val = a.fatca_cust_dvcd) as fatca_cust_dvcd_nm,
+					   count(*) over() as total_cnt
+				FROM TB_FTCM_ACIPRSLT a
+				WHERE a.crym = #crym#
+				and a.sls_brno = #slsBrno#	
+			    <isNotEmpty property="csno">
+			    AND a.csno = #csno#
+			    </isNotEmpty>	
+			    <isNotEmpty property="fatcaAcipCgpEnob">
+			     AND a.fatca_acip_cgp_enob = #fatcaAcipCgpEnob#
+			     </isNotEmpty>
+				<isNotEmpty property="fatcaAmtSctClacd">
+				<isNotEqual property="fatcaAmtSctClacd" compareValue="0">
+			    AND a.fatca_amt_sct_clacd = #fatcaAmtSctClacd#
+			    </isNotEqual>
+			    </isNotEmpty>
+				<isEqual property="fatcaAcipComptYn" compareValue="02">
+			  	AND a.fatca_acip_compt_dt = '99991231'
+			  	</isEqual>
+			  	<isEqual property="fatcaAcipComptYn" compareValue="01">
+			  	AND a.fatca_acip_compt_dt != '99991231'
+			  	</isEqual>
+			    <isNotEmpty property="fatcaCzAcipRscd">
+			    AND a.fatca_cz_acip_rscd = #fatcaCzAcipRscd#
+			    </isNotEmpty>
+			    <isNotEmpty property="fatcaDocAcipRscd">
+			    AND a.fatca_doc_acip_rscd = #fatcaDocAcipRscd#
+			    </isNotEmpty>
+			    <isNotEmpty property="fatcaCfrrptAcipRscd">
+			    AND a.fatca_cfrrpt_acip_rscd = #fatcaCfrrptAcipRscd#
+			    </isNotEmpty>
+			    <isNotEmpty property="fatcaIqrRscd">
+			    AND a.fatca_iqr_rscd = #fatcaIqrRscd#
+			    </isNotEmpty>		
+			    <isNotEmpty property="fatcaReptTrgetDvcd">
+			    AND a.fatca_rept_trget_dvcd = #fatcaReptTrgetDvcd#
+			    </isNotEmpty>		
+			    <isNotEmpty property="fatcaCustDvcd">
+			    AND a.fatca_cust_dvcd = #fatcaCustDvcd#
+			    </isNotEmpty>		
+				AND a.fatca_tpcd = '01'
+				ORDER BY  a.crym, sls_brno, a.csno
+			) ROWNUM_
+			WHERE   #pagingEnd# >= ROWNUM  
+		) WHERE RNUM > #pagingStart#
+	</select>
+	
+	
+	<select id="selectCompanyResultList" resultClass="dbmap" parameterClass="map">		
+	/** acipresult.selectCompanyResultList */
+		SELECT * FROM (
+			SELECT ROWNUM_.* , ROWNUM AS RNUM FROM 
+			(	
+				SELECT a.sls_brno,
+				       (SELECT BRC_NM FROM TB_COAM_BRBAS 
+						WHERE clo_brc_yn='N' 
+						and brno = a.sls_brno) as sls_brno_nm,
+				       a.crym,
+				       a.csno,
+                       a.cust_seq, 
+				       ( select cust_nm from TB_FTCM_CUSTBAS where csno = a.csno and crym = a.crym and cust_seq = a.cust_seq) AS cust_nm,
+				       ( select rnno from TB_FTCM_CUSTBAS where csno = a.csno and crym = a.crym and cust_seq = a.cust_seq) AS rnno,
+				       a.fatca_acip_cgp_enob,
+			           (SELECT user_nm FROM TB_COAM_HRUSERBAS where enob = A.fatca_acip_cgp_enob ) as fatca_acip_cgp_ennm,
+				       a.fatca_amt_sct_clacd,
+				       ( select vld_val_nm from TB_FTCD_CDDTL where crym=#crym# and cd_idtf_id = '114' and use_yn = 'Y' and vld_val = a.fatca_amt_sct_clacd ) as fatca_amt_sct_clacd_nm,
+				       a.fatca_cz_acip_rscd,
+				       ( select vld_val_nm from TB_FTCD_CDDTL where crym=#crym# and cd_idtf_id = '116' and use_yn = 'Y' and vld_val = a.fatca_cz_acip_rscd ) as fatca_cz_acip_rscd_nm,
+				       a.fatca_doc_acip_rscd,
+				       ( select vld_val_nm from TB_FTCD_CDDTL where crym=#crym# and cd_idtf_id = '117' and use_yn = 'Y' and vld_val = a.fatca_doc_acip_rscd ) as fatca_doc_acip_rscd_nm,
+				       a.fatca_cfrrpt_acip_rscd,
+				       ( select vld_val_nm from TB_FTCD_CDDTL where crym=#crym# and cd_idtf_id = '119' and use_yn = 'Y' and vld_val = a.fatca_cfrrpt_acip_rscd ) as fatca_cfrrpt_acip_rscd_nm,
+				       a.fatca_iqr_rscd,				       
+                       ( select vld_val_nm from TB_FTCD_CDDTL where crym=#crym# and cd_idtf_id = '118' and use_yn = 'Y' and vld_val = a.fatca_iqr_rscd ) as fatca_iqr_rscd_nm,
+				       a.fatca_rept_trget_dvcd,
+				       ( select vld_val_nm from TB_FTCD_CDDTL where crym=#crym# and cd_idtf_id = '120' and use_yn = 'Y' and vld_val = a.fatca_rept_trget_dvcd ) as fatca_rept_trget_dvcd_nm,
+				       a.fatca_acip_compt_dt,
+				       a.fatca_cust_dvcd,
+				       ( select vld_val_nm from TB_FTCD_CDDTL where crym=#crym# and cd_idtf_id = '115' and use_yn = 'Y' and vld_val = a.fatca_cust_dvcd) as fatca_cust_dvcd_nm,
+					   count(*) over() as total_cnt
+				FROM TB_FTCM_ACIPRSLT a
+				WHERE a.crym = #crym#
+				and a.sls_brno = #slsBrno#		
+			    <isNotEmpty property="csno">
+			    AND a.csno = #csno#
+			    </isNotEmpty>	
+			    <isNotEmpty property="fatcaAcipCgpEnob">
+			    AND a.fatca_acip_cgp_enob = #fatcaAcipCgpEnob#
+			    </isNotEmpty>
+				<isNotEmpty property="fatcaAmtSctClacd">
+			    AND a.fatca_amt_sct_clacd = #fatcaAmtSctClacd#
+			    </isNotEmpty>
+			  	<isEqual property="fatcaAcipComptYn" compareValue="02">
+			  	AND a.fatca_acip_compt_dt = '99991231'
+			  	</isEqual>
+			  	<isEqual property="fatcaAcipComptYn" compareValue="01">
+			  	AND a.fatca_acip_compt_dt != '99991231'
+			  	</isEqual>
+			    <isNotEmpty property="fatcaCzAcipRscd">
+			    AND a.fatca_cz_acip_rscd = #fatcaCzAcipRscd#
+			    </isNotEmpty>
+			    <isNotEmpty property="fatcaDocAcipRscd">
+			    AND a.fatca_doc_acip_rscd = #fatcaDocAcipRscd#
+			    </isNotEmpty>
+			    <isNotEmpty property="fatcaCfrrptAcipRscd">
+			    AND a.fatca_cfrrpt_acip_rscd = #fatcaCfrrptAcipRscd#
+			    </isNotEmpty>
+			    <isNotEmpty property="fatcaIqrRscd">
+			    AND a.fatca_iqr_rscd = #fatcaIqrRscd#
+			    </isNotEmpty>		
+			    <isNotEmpty property="fatcaReptTrgetDvcd">
+			    AND a.fatca_rept_trget_dvcd = #fatcaReptTrgetDvcd#
+			    </isNotEmpty>		
+			    <isNotEmpty property="fatcaCustDvcd">
+			    AND a.fatca_cust_dvcd = #fatcaCustDvcd#
+			    </isNotEmpty>		
+			    <isNotEmpty property="custSeq">
+			    AND a.cust_seq = #custSeq#
+			    </isNotEmpty>
+				AND a.fatca_tpcd = '02'
+				ORDER BY a.crym, sls_brno, a.csno, a.cust_seq 
+			) ROWNUM_
+			WHERE   #pagingEnd# >= ROWNUM  
+		) WHERE RNUM > #pagingStart#
+	</select>
+	
+	
+	<select id="selectDocumentResultList_OLD" resultClass="dbmap" parameterClass="map">		
+		SELECT fatca_acip_compt_dt as compt_dt,
+			   decode(MAX(fatca_acip_compt_dt), '99991231', '', to_char(MAX(to_date(fatca_acip_compt_dt,'yyyyMMdd')), 'yyyy-MM-dd')) as fatca_acip_compt_dt,
+		       MAX(enob) as chpr_enob,
+		       MAX(lt_chpr_nm) as chpr_nm,
+		       MAX(ch_dtl_dtti) as ch_dtl_dtti
+		FROM (
+		        SELECT a.fatca_acip_compt_dt,
+		               a.fatca_acip_cgp_enob as enob,
+		               (
+		                 SELECT user_nm
+		                 FROM TB_COAM_HRUSERBAS
+		                 where enob = a.fatca_acip_cgp_enob ) as lt_chpr_nm,
+		               to_char(sysdate, 'yyyy-MM-dd') as ch_dtl_dtti
+		        FROM TB_FTCM_ACIPRSLT a,
+		          TB_FTCM_DOCACIPRSLT b
+		        WHERE a.crym = b.crym(+)
+		          AND a.csno = b.csno(+)
+ 		          AND a.cust_seq = b.cust_seq(+)
+		          AND a.crym = #crym#
+		          AND a.csno = #csno#
+		          AND a.fatca_tpcd = '01'	 
+		      ) a	
+		GROUP BY a.fatca_acip_compt_dt
+	</select>
+	
+	<select id="selectDocumentResultInfo" resultClass="dbmap" parameterClass="map">		
+	/** acipresult.selectDocumentResultInfo */
+		SELECT a.fatca_acip_compt_dt ,
+			   decode(fatca_acip_compt_dt, '99991231', '', to_char(to_date(fatca_acip_compt_dt,'yyyyMMdd'), 'yyyy-MM-dd')) as fatca_acip_compt_dt_fmt,
+               a.fatca_acip_cgp_enob as enob,
+               (
+                 SELECT user_nm
+                 FROM TB_COAM_HRUSERBAS
+                 where enob = a.fatca_acip_cgp_enob ) as lt_chpr_nm,
+               to_char(sysdate, 'yyyy-MM-dd') as ch_dtl_dtti,
+               a.fatca_doc_acip_rscd
+        FROM TB_FTCM_ACIPRSLT a
+        WHERE a.crym = #crym#
+        AND a.csno = #csno#
+        /* AND a.fatca_tpcd = '01' 법인일때도 조회는 되고 버튼만 안나오게*/
+	</select>
+	
+	
+		
+	<select id="selectDocNumList" resultClass="dbmap" parameterClass="map">		
+	/** acipresult.selectDocNumList */
+		SELECT vld_val as doc_num_cd
+		FROM TB_FTCD_CDDTL
+		WHERE crym=#crym# 
+		and CD_IDTF_ID = '126'
+		ORDER BY vld_val	
+	</select>
+	
+	<select id="selectDocumentInfoList" resultClass="dbmap" parameterClass="map">	
+	/** acipresult.selectDocumentInfoList */	
+		SELECT a.vld_val as doc_cd,
+		       a.vld_val_nm as doc_nm,
+		       NVL(b.fatca_asm_info_item_dvcd, '13') as fatca_asm_info_item_dvcd, 
+		       b.fatca_acip_rscd
+		FROM TB_FTCD_CDDTL a,
+		     (
+		      SELECT crym,
+		             csno,
+		             fatca_doc_dvcd, 
+		             fatca_asm_info_item_dvcd,
+		             fatca_acip_rscd
+		      FROM TB_FTCM_DOCACIPRSLT 
+		      WHERE crym = #crym#
+		      AND csno = #csno#
+		     ) b
+		WHERE a.vld_val = b.fatca_doc_dvcd(+)
+		AND a.cd_idtf_id = '126'
+		AND a.crym=#crym# 
+		AND use_yn = 'Y'
+		ORDER BY a.vld_val	
+	</select>
+		
+	
+	<insert id="insertDocAcipRslt" parameterClass="map">		
+	/** acipresult.insertDocAcipRslt */
+		INSERT INTO TB_FTCM_DOCACIPRSLT (
+		   CRYM, CSNO, CUST_SEQ, FATCA_DOC_DVCD, FATCA_ASM_INFO_ITEM_DVCD,
+		   FATCA_ACIP_RSCD, FST_REG_DTL_DTTI, FST_RGPR_ENOB, FST_REG_BRNO,
+		   LT_CH_DTL_DTTI, LT_CHPR_ENOB, LT_CH_BRNO) 
+		VALUES ( #crym#, #csno#, '0000', #docCd#, #fatcaAsmInfoItemDvcd#,
+			#fatcaAcipRscd#, systimestamp, #enob#, #brno#,
+		    systimestamp, #enob#, #brno#)
+	</insert>
+	
+		<!--  delete -->		
+	<delete id="deleteDocAcipRslt" parameterClass="map">
+	/** acipresult.deleteDocAcipRslt */
+		DELETE FROM TB_FTCM_DOCACIPRSLT 
+		WHERE CRYM = #crym#
+		AND CSNO = #csno#
+		AND CUST_SEQ = '0000'
+	</delete>
+	
+	
+		
+	<update id="updateAcipRsltDoc" parameterClass="map">		
+	/** acipresult.updateAcipRsltDoc */
+		UPDATE TB_FTCM_ACIPRSLT
+		SET    FATCA_DOC_ACIP_RSCD        = #fatcaAsmInfoItemDvcdTotal#,
+		       FATCA_ACIP_COMPT_DT        = NVL((
+								       		   SELECT to_char(sysdate,'yyyymmdd')
+											    FROM TB_FTCM_ACIPRSLT
+											    WHERE crym = #crym#
+											   	AND csno = #csno#
+											   	AND fatca_tpcd = '01'
+												AND fatca_cz_acip_rscd != '13'
+												AND fatca_iqr_rscd != '13'												
+		       								 )	, '99991231')	        
+		WHERE  CRYM                       = #crym#
+		AND    CSNO						  = #csno#
+		AND    FATCA_TPCD           	  = '01'
+				
+
+	</update>
+	
+	
+	<select id="selectQuestionInfo" resultClass="dbmap" parameterClass="map">	
+	/** acipresult.selectQuestionInfo */	
+		SELECT a.crym,
+			   a.csno,
+			   a.cust_seq,
+			   a.fatca_iqr_rscd,
+			   decode(a.fatca_acip_compt_dt, '99991231', '', to_char(to_date(a.fatca_acip_compt_dt,'yyyyMMdd'), 'yyyy-MM-dd')) as fatca_acip_compt_dt,
+			   b.fatca_iqr_dtl_cd,
+			   b.slbr_opn_cn,
+			   a.fatca_acip_cgp_enob as enob,
+			   (SELECT user_nm FROM TB_COAM_HRUSERBAS where enob = a.fatca_acip_cgp_enob ) as lt_chpr_nm,
+			   to_char(sysdate, 'yyyy-MM-dd') as lt_ch_dtl_dtti
+		FROM TB_FTCM_ACIPRSLT a,
+		     TB_FTCM_CUSTIQRRSLT b
+		WHERE a.crym = b.crym(+)
+		AND a.csno = b.csno(+)
+		AND a.crym = #crym#
+		AND a.csno = #csno#		
+		/* AND a.fatca_tpcd = '01' 법인조회가능버튼비활성화 */
+	</select>
+
+
+	<select id="selectCustIqrRsltInfo" resultClass="string" parameterClass="map">		
+	/** acipresult.selectCustIqrRsltInfo */
+		SELECT case when count(csno) > 0 then 'Y'
+					else 'N' end chk
+		FROM  TB_FTCM_CUSTIQRRSLT
+		WHERE crym = #crym#
+		AND csno = #csno#
+		AND cust_seq = '0000'	
+	</select>
+	
+	
+	<select id="selectCheckInfo" resultClass="dbmap" parameterClass="map">		
+	/** acipresult.selectCheckInfo */
+		SELECT crym, 
+			   csno, 
+			   cust_seq, 
+		 	   fatca_iqr_dtl_cd
+		FROM  TB_FTCM_CUSTIQRRSLT
+		WHERE crym = #crym#
+		  AND csno = #csno#
+		  AND cust_seq = '0000'	
+	</select>
+	
+	<insert id="insertCustIqrRslt" parameterClass="map">		
+	/** acipresult.insertCustIqrRslt */
+		INSERT INTO TB_FTCM_CUSTIQRRSLT (
+		   CRYM, CSNO, CUST_SEQ, FATCA_IQR_DTL_CD, SLBR_OPN_CN, 
+		   FST_REG_DTL_DTTI, FST_RGPR_ENOB, FST_REG_BRNO, 
+		   LT_CH_DTL_DTTI, LT_CHPR_ENOB, LT_CH_BRNO) 
+		VALUES ( #crym#, #csno#, '0000',
+		    #fatcaIqrDtlCd#, #slbrOpnCn#,
+		    systimestamp, #enob#, #brno#,
+		    systimestamp, #enob#, #brno#)
+	</insert>
+	
+		
+	<update id="updateCustIqrRslt" parameterClass="map">
+	/** acipresult.updateCustIqrRslt */		
+		UPDATE TB_FTCM_CUSTIQRRSLT
+		SET    FATCA_IQR_DTL_CD           = #fatcaIqrDtlCd#,
+		       SLBR_OPN_CN                = #slbrOpnCn#,	
+		       LT_CH_DTL_DTTI             = systimestamp,
+		       LT_CHPR_ENOB               = #enob#,	
+		       LT_CH_BRNO                 = #brno#	
+		WHERE  CRYM                       = #crym#
+		AND    CSNO						  = #csno#
+		AND    CUST_SEQ                   = '0000'		
+
+	</update>
+	
+	<update id="updateAcipRslt" parameterClass="map">
+	/** acipresult.updateAcipRslt */
+		UPDATE TB_FTCM_ACIPRSLT
+		SET    FATCA_IQR_RSCD             = #fatcaIqrRscd#,
+		       FATCA_ACIP_COMPT_DT        = NVL((
+								       		   SELECT to_char(sysdate,'yyyymmdd')
+											    FROM TB_FTCM_ACIPRSLT
+											    WHERE crym = #crym#
+											   	AND csno = #csno#
+											   	AND fatca_tpcd = '01'
+												AND fatca_cz_acip_rscd != '13'
+												AND fatca_doc_acip_rscd != '13'												
+		       								 )	, '99991231')	        
+		WHERE  CRYM                       = #crym#
+		AND    CSNO						  = #csno#
+		AND    FATCA_TPCD                   = '01'
+	</update>
+	
+	 <update id="updateCfrrptAcipRscd" parameterClass="map">
+	 /** acipresult.updateCfrrptAcipRscd */
+	 <![CDATA[
+		UPDATE TB_FTCM_ACIPRSLT a
+		SET    FATCA_CFRRPT_ACIP_RSCD = decode(a.FATCA_CFRRPT_ACIP_RSCD,
+											10,
+												NVL(
+									       		    (SELECT '13'
+												    FROM TB_FTCM_ACIPRSLT
+												    WHERE crym = a.crym
+												   	AND csno = a.csno
+												   	AND fatca_tpcd = a.fatca_tpcd
+													AND	(fatca_cz_acip_rscd = '11'
+														or fatca_doc_acip_rscd = '11'
+														or fatca_iqr_rscd = '11')											
+		       								 		)
+		       								 	,a.FATCA_CFRRPT_ACIP_RSCD),
+	       								 	13,
+		       								 	NVL(
+		       								 		(SELECT '10'
+												    FROM TB_FTCM_ACIPRSLT
+												    WHERE crym = a.crym
+												   	AND csno = a.csno
+												   	AND fatca_tpcd = a.fatca_tpcd
+													AND fatca_cz_acip_rscd = '12'
+													AND fatca_doc_acip_rscd in ('12','13')
+													AND fatca_iqr_rscd in ('12','13')
+													AND (select count(csno) from tb_ftcm_repttrgetprsnlbas
+														 where crym = (select max(crym) from tb_ftcm_acipcri where crym < #crym#)
+														 and csno = a.csno) = 0 	
+													)
+												,a.FATCA_CFRRPT_ACIP_RSCD),
+											a.FATCA_CFRRPT_ACIP_RSCD)	        
+		WHERE  CRYM                       = #crym#
+		AND    CSNO						  = #csno#
+		AND    FATCA_TPCD                 = '01'
+	]]>	
+	</update>
+	  
+	<select id="selectCompleteInfo" resultClass="dbmap" parameterClass="map">
+	/** acipresult.selectCompleteInfo */
+		select 
+		        cgp_enob,
+		        (select USER_NM from TB_COAM_HRUSERBAS where ENOB = b.cgp_enob) cgp_enob_nm,
+				decode(clsn_dt,'99991231','',to_char(to_date(b.clsn_dt,'yyyyMMdd'),'yyyy-mm-dd')) as clsn_dt,
+				to_char(to_date(b.fatca_acip_crdt,'yyyyMMdd'),'yyyy-mm-dd') as fatca_acip_crdt,
+				to_char((tper_cust + tcom_cust), 'FM999,999,999,999,990') as ttot_cust,
+			    to_char((tper_comp + tcom_comp), 'FM999,999,999,999,990') as ttot_comp,
+			    to_char(tper_cust, 'FM999,999,999,999,990') as tper_cust,
+			    to_char(tper_comp, 'FM999,999,999,999,990') as tper_comp,
+			    to_char(tcom_cust, 'FM999,999,999,999,990') as tcom_cust,
+			    to_char(tcom_comp, 'FM999,999,999,999,990') as tcom_comp 
+		from 
+		(
+			select crym,
+				   sum(per_c) as tper_cust,
+				   (sum(per_c)-sum(per_u)) as tper_comp,
+				   sum(com_c) as tcom_cust,
+				   (sum(com_c)-sum(com_u)) as tcom_comp						   
+			from (
+				select crym,
+					   to_number(decode(fatca_tpcd,'01','1','0')) per_c,
+					   to_number(decode(fatca_tpcd,'01',decode(fatca_acip_compt_dt,'99991231','1','0'),'0')) per_u,
+					   to_number(decode(fatca_tpcd,'02','1','0')) com_c,
+					   to_number(decode(fatca_tpcd,'02',decode(fatca_acip_compt_dt,'99991231','1','0'),'0')) com_u
+				from TB_FTCM_ACIPRSLT	
+				where crym = #crym#
+			) 
+			group by crym					
+		) a, TB_FTCM_acipcri b
+		where a.crym = b.crym
+	</select>
+	
+	
+	<select id="selectCompleteList" resultClass="dbmap" parameterClass="map">
+	/** acipresult.selectCompleteList */
+		SELECT * FROM (
+			SELECT ROWNUM_.* , ROWNUM AS RNUM FROM 
+			(			
+				select  sls_brno,
+				        (select BRC_NM from TB_COAM_BRBAS where BRNO = x.sls_brno and clo_brc_yn='N') sls_brno_nm,
+				        fatca_acip_rppr_enob,
+				        (select USER_NM from TB_COAM_HRUSERBAS where ENOB = x.fatca_acip_rppr_enob) fatca_acip_rppr_enob_nm,
+				        decode((per_cust + com_cust - per_comp - com_comp),0,'완료','진행') as sls_status,
+					   (per_cust + com_cust) as tot_cust, 
+					   (per_comp + com_comp) as tot_comp,
+					   (per_uncomp + com_uncomp) as tot_uncomp,
+					   (per_report + com_report) as tot_report,
+					   per_cust, 
+					   per_comp,
+					   per_uncomp,
+					   per_report,
+					   com_cust,
+					   com_comp,
+					   com_uncomp,
+					   com_report,
+					   count(*) over() as total_cnt					   
+				from 
+				(
+					select sls_brno,
+						   fatca_acip_rppr_enob,
+						   sum(per_c) as per_cust,
+						   (sum(per_c)-sum(per_u)) as per_comp,
+						   sum(per_u) as per_uncomp,
+						   (sum(per_r) + sum(per_r2)) as per_report,
+						   sum(com_c) as com_cust,
+						   (sum(com_c)-sum(com_u)) as com_comp,
+						   sum(com_u) as com_uncomp,
+						   (sum(com_r) + sum(com_r2)) as com_report
+					from (
+						select  a.sls_brno,
+							   fatca_acip_rppr_enob,
+							   to_number(decode(fatca_tpcd,'01','1','0')) per_c,
+							   to_number(decode(fatca_tpcd,'01',decode(fatca_acip_compt_dt,'99991231','1','0'),'0')) per_u,
+							   to_number(decode(fatca_tpcd,'01',decode(fatca_rept_trget_dvcd,'11','1','0'),'0')) per_r,
+							   to_number(decode(fatca_tpcd,'01',decode(fatca_rept_trget_dvcd,'13','1','0'),'0')) per_r2,
+							   to_number(decode(fatca_tpcd,'02','1','0')) com_c,
+							   to_number(decode(fatca_tpcd,'02',decode(fatca_acip_compt_dt,'99991231','1','0'),'0')) com_u,
+							   to_number(decode(fatca_tpcd,'02',decode(fatca_rept_trget_dvcd,'11','1','0'),'0')) com_r,
+							   to_number(decode(fatca_tpcd,'02',decode(fatca_rept_trget_dvcd,'13','1','0'),'0')) com_r2
+						from TB_FTCM_aciprslt a
+						where a.crym = #crym#
+						<isNotEqual property="slsBrno" compareValue="999">
+						and a.sls_brno = #slsBrno#
+						</isNotEqual>
+						<isNotEmpty property="fatcaAcipRpprEnob">
+						and fatca_acip_rppr_enob = #fatcaAcipRpprEnob#
+						</isNotEmpty>
+					)
+					group by sls_brno, fatca_acip_rppr_enob	
+				) x
+				ORDER BY  sls_brno, fatca_acip_rppr_enob 
+			) ROWNUM_
+			WHERE   #pagingEnd# >= ROWNUM  
+		) WHERE RNUM > #pagingStart#
+	</select>
+	
+	
+	<update id="updateMainComplete" parameterClass="map">		
+	/** acipresult.updateMainComplete */
+		UPDATE TB_FTCM_ACIPCRI
+		SET    CLSN_YN = #dist#,
+			   CGP_ENOB = #enob#,
+			   <isEqual property="dist" compareValue="Y">
+			   CLSN_DT = to_char(sysdate, 'yyyymmdd')
+			   </isEqual>
+			   <isEqual property="dist" compareValue="N">
+			   CLSN_DT = '99991231'
+			   </isEqual>
+		WHERE  CRYM = #crym#
+	</update>
+	
+			 
+	<select id="selectBranchResultList" resultClass="dbmap" parameterClass="map">
+	/** acipresult.selectBranchResultList */
+		SELECT * FROM (
+			SELECT ROWNUM_.* , ROWNUM AS RNUM FROM 
+			(	
+
+                SELECT a.crym,
+					   a.fatca_tpcd,
+                       (select vld_val_nm from TB_FTCD_CDDTL where crym=a.crym and cd_idtf_id = '121' and use_yn = 'Y' and vld_val =  a.fatca_tpcd) as fatca_tpcd_nm,
+					   a.sls_brno,
+				       (SELECT BRC_NM FROM TB_COAM_BRBAS 
+						WHERE clo_brc_yn='N' 
+						and brno = a.sls_brno) as sls_brno_nm,                       
+                       a.csno,
+                       a.cust_seq,
+                       (SELECT cust_nm FROM TB_FTCM_CUSTBAS WHERE csno = a.csno AND crym = a.crym AND cust_seq = a.cust_seq) AS cust_nm,
+                       (SELECT rnno FROM TB_FTCM_CUSTBAS WHERE csno = a.csno AND crym = a.crym AND cust_seq = a.cust_seq) AS rnno,							   
+                       TO_CHAR ( SUBSTR ((SELECT rnno FROM TB_FTCM_CUSTBAS WHERE csno = a.csno AND crym = a.crym AND cust_seq = a.cust_seq), 1,  6)) || 'XXXXXXX'  AS rnno_fmt,							   
+                       a.fatca_amt_sct_clacd,
+                       (select vld_val_nm from TB_FTCD_CDDTL where crym=a.crym and cd_idtf_id = '114' and use_yn = 'Y' and vld_val =  a.fatca_amt_sct_clacd) as fatca_amt_sct_clacd_nm,      
+                       a.fatca_rept_trget_dvcd,
+					   (select vld_val_nm from TB_FTCD_CDDTL where crym=a.crym and cd_idtf_id = '120' and use_yn = 'Y' and vld_val =  a.fatca_rept_trget_dvcd) as fatca_rept_trget_dvcd_nm,
+					   a.fatca_acip_compt_dt,
+					   a.fatca_cust_dvcd,
+					   (select vld_val_nm from TB_FTCD_CDDTL where crym=a.crym and cd_idtf_id = '115' and use_yn = 'Y' and vld_val =  a.fatca_cust_dvcd) as fatca_cust_dvcd_nm,
+                      a.fatca_acip_cgp_enob,
+			          (SELECT user_nm FROM TB_COAM_HRUSERBAS where enob = a.fatca_acip_cgp_enob ) as fatca_acip_cgp_nm,
+			          a.fatca_acip_rppr_enob,
+			          (SELECT user_nm FROM TB_COAM_HRUSERBAS where enob = a.fatca_acip_rppr_enob ) as fatca_acip_rppr_nm,
+			          a.fatca_cust_rel_mngr_enob,
+			          (SELECT user_nm FROM TB_COAM_HRUSERBAS where enob = a.fatca_cust_rel_mngr_enob ) as fatca_cust_rel_mngr_nm,
+			          count(*) over() as total_cnt
+                  FROM TB_FTCM_ACIPRSLT a
+                  WHERE a.crym = #crym#				   
+                 <isNotEmpty property="slsBrno">
+			      and a.sls_brno = #slsBrno#
+			      </isNotEmpty>
+                  <isNotEmpty property="fatcaAcipRpprEnob">
+			      AND a.fatca_acip_rppr_enob = #fatcaAcipRpprEnob#
+			      </isNotEmpty>
+			      <isNotEmpty property="fatcaAcipCgpEnob">
+			      AND a.fatca_acip_cgp_enob = #fatcaAcipCgpEnob#
+			      </isNotEmpty>
+			      <isNotEmpty property="fatcaCustRelMngrEnob">
+			      AND a.fatca_cust_rel_mngr_enob = #fatcaCustRelMngrEnob#
+			      </isNotEmpty>
+			      <isNotEmpty property="fatcaAmtSctClacd">
+			      AND a.fatca_amt_sct_clacd = #fatcaAmtSctClacd#
+			      </isNotEmpty>
+			      <isNotEmpty property="csno">
+			      AND a.csno = #csno#
+			      </isNotEmpty>
+				  <isEqual property="ynCombo" compareValue='01'>
+			      AND a.fatca_acip_compt_dt != '99991231'
+			      </isEqual>	
+			      <isEqual property="ynCombo" compareValue='02'>
+			      AND a.fatca_acip_compt_dt = '99991231'
+			      </isEqual>	
+				  <isNotEmpty property="fatcaTpcd">
+			      AND a.fatca_tpcd = #fatcaTpcd#
+			      </isNotEmpty>
+				  <isNotEmpty property="fatcaReptTrgetDvcd">
+			      AND a.fatca_rept_trget_dvcd = #fatcaReptTrgetDvcd#
+			      </isNotEmpty>				
+			      ORDER BY a.crym, sls_brno, a.csno
+			) ROWNUM_
+			WHERE   #pagingEnd# >= ROWNUM  
+		) WHERE RNUM > #pagingStart#
+	</select>
+		
+	
+	<select id="selectBranchResultInfo" resultClass="dbmap" parameterClass="map">	
+	/** acipresult.selectBranchResultInfo */			
+		select
+			  to_char((per_cust + com_cust), 'FM999,999,999,999,990') as tot_cust,
+			  to_char((per_cust + com_cust - per_minus - com_minus), 'FM999,999,999,999,990') as tot_comp,
+			  to_char(per_cust, 'FM999,999,999,999,990') as per_cust,
+			  to_char((per_cust - per_minus), 'FM999,999,999,999,990') as per_comp,
+			  to_char(com_cust, 'FM999,999,999,999,990') as com_cust,
+			  to_char((com_cust - com_minus), 'FM999,999,999,999,990') as com_comp
+		from(
+			select sum(per_cust) per_cust,
+				   sum(per_minus) per_minus,
+				   sum(com_cust) com_cust,
+				   sum(com_minus) com_minus
+			from(	   
+				select 
+			   		  decode(fatca_tpcd,'01',1,0) per_cust,
+					  decode(fatca_tpcd,'01',decode(fatca_acip_compt_dt,'99991231',1,0),0) per_minus,
+					  decode(fatca_tpcd,'02',1,0) com_cust,
+					  decode(fatca_tpcd,'02',decode(fatca_acip_compt_dt,'99991231',1,0),0) com_minus
+			   from TB_FTCM_ACIPRSLT a
+		   	   where crym=#crym#
+			   <isNotEmpty property="slsBrno">
+		       and a.sls_brno = #slsBrno#
+		       </isNotEmpty>
+		    )
+		 )      
+	</select>
+	
+	
+</sqlMap>

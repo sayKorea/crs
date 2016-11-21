@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="EUC-KR"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="acipmonitor">
+    
+	<select id="selectBranchStausList" resultClass="dbmap" parameterClass="map">
+	/** acipmonitor.selectBranchStausList */
+		SELECT * FROM (
+			SELECT ROWNUM_.* , ROWNUM AS RNUM FROM 
+			(			
+				SELECT  sls_brno,
+				        (select BRC_NM from TB_COAM_BRBAS where BRNO = x.sls_brno and clo_brc_yn='N') as sls_brno_nm,
+				        fatca_acip_rppr_enob,
+				        (select USER_NM from TB_COAM_HRUSERBAS where ENOB = x.fatca_acip_rppr_enob) fatca_acip_rppr_enob_nm,
+				        fatca_acip_cgp_enob,				        
+						(select USER_NM from TB_COAM_HRUSERBAS where ENOB = x.fatca_acip_cgp_enob) fatca_acip_cgp_enob_nm,  
+				        sum(a) + sum(b) + sum(c)+ sum(d) as target_acip, /* 보고대상 + 비보고대상 + 비협조보고 + 보고미확정 = 실사대상자 수 */
+				        sum(a) + sum(b) + sum(c) as compt_acip,  /* 보고대상 + 비보고대상 + 비협조보고 = 실사완료자 수 */
+				        ceil((sum(a) + sum(b) + sum(c)) / (sum(a) + sum(b) + sum(c)+ sum(d)) *100) as acip_rate,
+				        sum(a) + sum(c) as report_acip,  /*  보고대상 + 비협조보고  = 합계 */
+				        sum(a) as cprt_acip,  /* 보고대상 = 협조보고 대상 */
+				        sum(c) as no_cprt_acip,   /* 비협조보고 = 비협조보고 대상 */
+				        sum(b) as no_report_acip,   /* 비보고대상 = 비보고 대상 */
+				        sum(d) as no_decision_acip,   /* 보고미확정 = 보고미확정 */
+				        count(*) over() as total_cnt			        
+				FROM    (
+				    	SELECT sls_brno,
+							   fatca_acip_rppr_enob,
+							   fatca_acip_cgp_enob,
+							   NVL(TO_NUMBER(decode(fatca_rept_trget_dvcd, '11', '1', '')),0) a, /* 11:보고대상 */
+							   NVL(TO_NUMBER(decode(fatca_rept_trget_dvcd, '12', '1', '')),0) b, /* 12:비보고대상 */
+							   NVL(TO_NUMBER(decode(fatca_rept_trget_dvcd, '13', '1', '')),0) c, /* 13:비협조보고 */
+							   NVL(TO_NUMBER(decode(fatca_rept_trget_dvcd, '99', '1', '')),0) d	 /* 99:보고미확정 */ 	   
+						from TB_FTCM_aciprslt a
+						where a.crym = #crym#
+						<isNotEqual property="slsBrno" compareValue="999">
+						and sls_brno = #slsBrno#				
+						</isNotEqual>		
+						<isNotEmpty property="fatcaAcipRpprEnob">
+						AND fatca_acip_rppr_enob = #fatcaAcipRpprEnob#
+						</isNotEmpty>
+						<isNotEmpty property="fatcaAcipCgpEnob">
+						AND fatca_acip_cgp_enob = #fatcaAcipCgpEnob#
+						</isNotEmpty>
+				        )  x
+				GROUP BY sls_brno,
+					     fatca_acip_rppr_enob,
+					     fatca_acip_cgp_enob
+				ORDER BY sls_brno, fatca_acip_rppr_enob, fatca_acip_cgp_enob
+			) ROWNUM_
+			WHERE   #pagingEnd# >= ROWNUM  
+		) WHERE RNUM > #pagingStart#
+	</select>
+	
+	
+	<select id="selectAcipYearHistoryList" resultClass="dbmap" parameterClass="map">
+	/** acipmonitor.selectAcipYearHistoryList */
+				SELECT *
+				FROM (
+				        SELECT substr(crym, 0, 4) || '-' || substr(crym, 5) as crym,
+				        	   sum(a) + sum(b) + sum(c) + sum(d) as target_acip,
+				        	   sum(a) + sum(c) as report_acip,
+				               sum(a) as cprt_acip, 
+				               sum(c) as no_cprt_acip,
+				               sum(b) as no_report_acip
+				        FROM (
+				                SELECT crym,
+								   NVL(TO_NUMBER(decode(fatca_rept_trget_dvcd, '11', '1', '')),0) a, /* 11:보고대상 */
+								   NVL(TO_NUMBER(decode(fatca_rept_trget_dvcd, '12', '1', '')),0) b, /* 12:비보고대상 */
+								   NVL(TO_NUMBER(decode(fatca_rept_trget_dvcd, '13', '1', '')),0) c, /* 13:비협조보고 */
+								   NVL(TO_NUMBER(decode(fatca_rept_trget_dvcd, '99', '1', '')),0) d	 /* 99:보고미확정 */ 	   
+								FROM tb_ftcm_ACIPRSLT
+				                WHERE crym between #crymSt# and #crymEnd#	
+							    <isNotEmpty property="fatcaCustDvcd">
+							    AND fatca_tpcd = #fatcaCustDvcd#
+							    </isNotEmpty>
+				            )
+				        GROUP BY crym
+				        )
+				ORDER BY crym desc
+	</select>
+	
+	<select id="selectAcipYearHistoryListOLD" resultClass="dbmap" parameterClass="map">
+		SELECT * FROM (
+			SELECT ROWNUM_.* , ROWNUM AS RNUM FROM 
+			(			
+				SELECT substr(crym, 0, 4) || '-' || substr(crym, 5) as crym,
+				       SUM(CNT) AS tot_cnt,
+				       NVL(SUM(bogo), 0) as report_acip,
+				       NVL(SUM(bebogo), 0) as no_report_acip,
+				       NVL(SUM(behyupjo), 0) as no_cprt_acip,
+					   count(*) over() as total_cnt
+				FROM (
+				        SELECT count(*) as cnt,
+				               crym, 
+				               decode(fatca_rept_trget_dvcd, '11', NVL(SUM(bogo), 0)) as bogo, 
+				               decode(fatca_rept_trget_dvcd, '12', NVL(SUM(bebogo), 0)) as bebogo, 
+				               decode(fatca_rept_trget_dvcd, '13', NVL(SUM(behyupjo), 0)) as behyupjo
+				        FROM (
+				                SELECT crym,
+				                       fatca_rept_trget_dvcd,
+				                       case when fatca_rept_trget_dvcd = '11' then 1 
+				                            else 0 end as bogo,
+				                       case when fatca_rept_trget_dvcd = '12' then 1 
+				                            else 0 end as bebogo,      
+				                       case when fatca_rept_trget_dvcd = '13' then 1 
+				                            else 0 end as behyupjo              
+				                FROM tb_ftcm_ACIPRSLT
+				                WHERE crym between #crymSt# and #crymEnd#	
+							    <isNotEmpty property="fatcaCustDvcd">
+							    AND fatca_tpcd = #fatcaCustDvcd#
+							    </isNotEmpty>
+				            )
+				        GROUP BY crym, fatca_rept_trget_dvcd
+				        )
+				GROUP BY crym
+				ORDER BY crym desc
+			) ROWNUM_
+			WHERE   #pagingEnd# >= ROWNUM  
+		) WHERE RNUM > #pagingStart#
+	</select>
+	
+</sqlMap>

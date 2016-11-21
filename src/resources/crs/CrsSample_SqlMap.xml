@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="EUC-KR"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="sample">
+	<select id="select" resultClass="dbmap" parameterClass="map">
+		SELECT 'Y' FROM DUAL
+	</select>
+
+	<select id="getBaseYmList" resultClass="dbmap" parameterClass="map">
+		SELECT CRYM AS CODE,
+		SUBSTR(CRYM,0,4)||'-'||SUBSTR(CRYM,5,2) AS VALUE
+		FROM TB_FTCM_ACIPCRI
+		ORDER BY CRYM DESC
+	</select>
+
+	
+	<select id="getGridList" resultClass="dbmap" parameterClass="map">
+		SELECT *
+		  FROM (SELECT ROWNUM_.*, ROWNUM AS RNUM
+		          FROM (  SELECT a.sls_brno,
+		                         (SELECT BRC_NM
+		                            FROM TB_COAM_BRBAS
+		                           WHERE clo_brc_yn = 'N' AND brno = a.sls_brno)
+		                            AS sls_brno_nm,
+		                         a.crym,
+		                         a.csno,
+		                         B.cust_nm,
+		                         B.RNNO,
+		                         TO_CHAR ( SUBSTR (b.rnno, 1, 6)) || 'XXXXXXX'  AS rnno_fmt,
+		                         a.fatca_acip_cgp_enob,
+		                         (SELECT user_nm
+		                            FROM TB_COAM_HRUSERBAS
+		                           WHERE enob = A.fatca_acip_cgp_enob) AS fatca_acip_cgp_ennm,
+		                         a.fatca_amt_sct_clacd,
+		                         (SELECT vld_val_nm
+		                            FROM TB_FTCD_CDDTL
+		                           WHERE     crym = a.crym
+		                                 AND cd_idtf_id = '114'
+		                                 AND use_yn = 'Y'
+		                                 AND vld_val = a.fatca_amt_sct_clacd) AS fatca_amt_sct_clacd_nm,
+		                         a.fatca_cz_acip_rscd,
+		                         (SELECT vld_val_nm
+		                            FROM TB_FTCD_CDDTL
+		                           WHERE     crym = a.crym
+		                                 AND cd_idtf_id = '116'
+		                                 AND use_yn = 'Y'
+		                                 AND vld_val = a.fatca_cz_acip_rscd)
+		                            AS fatca_cz_acip_rscd_nm,
+		                         a.fatca_doc_acip_rscd,
+		                         (SELECT vld_val_nm
+		                            FROM TB_FTCD_CDDTL
+		                           WHERE     crym = a.crym
+		                                 AND cd_idtf_id = '117'
+		                                 AND use_yn = 'Y'
+		                                 AND vld_val = a.fatca_doc_acip_rscd) AS fatca_doc_acip_rscd_nm,
+		                         a.fatca_cfrrpt_acip_rscd,
+		                         (SELECT vld_val_nm
+		                            FROM TB_FTCD_CDDTL
+		                           WHERE     crym = a.crym
+		                                 AND cd_idtf_id = '119'
+		                                 AND use_yn = 'Y'
+		                                 AND vld_val = a.fatca_cfrrpt_acip_rscd) AS fatca_cfrrpt_acip_rscd_nm,
+		                         a.fatca_iqr_rscd,
+		                         (SELECT vld_val_nm
+		                            FROM TB_FTCD_CDDTL
+		                           WHERE     crym = a.crym
+		                                 AND cd_idtf_id = '118'
+		                                 AND use_yn = 'Y'
+		                                 AND vld_val = a.fatca_iqr_rscd) AS fatca_iqr_rscd_nm,
+		                         a.fatca_rept_trget_dvcd,
+		                         (SELECT vld_val_nm
+		                            FROM TB_FTCD_CDDTL
+		                           WHERE     crym = a.crym
+		                                 AND cd_idtf_id = '120'
+		                                 AND use_yn = 'Y'
+		                                 AND vld_val = a.fatca_rept_trget_dvcd) AS fatca_rept_trget_dvcd_nm,
+		                         a.fatca_acip_compt_dt,
+		                         a.fatca_cust_dvcd,
+		                         (SELECT vld_val_nm
+		                            FROM TB_FTCD_CDDTL
+		                           WHERE     crym = a.crym
+		                                 AND cd_idtf_id = '115'
+		                                 AND use_yn = 'Y'
+		                                 AND vld_val = a.fatca_cust_dvcd) AS fatca_cust_dvcd_nm,
+		                         COUNT (*) OVER () AS total_cnt
+		                    FROM TB_FTCM_ACIPRSLT a, 
+		                    	(	SELECT CSNO,CRYM, CUST_SEQ, RNNO, cust_nm AS usernm,  case when length(cust_nm) > 4 then substr(cust_nm,0,4) else cust_nm end as cust_nm
+		                            FROM TB_FTCM_CUSTBAS) b
+		                    WHERE  1=1
+	                         AND a.sls_brno = '001'
+	                         AND a.fatca_amt_sct_clacd = '13'
+	                         AND a.fatca_tpcd = '01'
+	                         AND A.CSNO = B.CSNO
+	                         AND A.CRYM = B.CRYM
+	                         AND A.CUST_SEQ = B.CUST_SEQ
+	               		<isNotEmpty property="baseym">
+							AND a.crym = REPLACE(#baseym#,'-','')
+						</isNotEmpty>
+						<isNotEmpty property="usernm">
+							AND B.usernm LIKE '%'||#usernm#||'%'
+						</isNotEmpty>
+		                <isNotEmpty property="csno">
+							AND a.csno = #csno#
+						</isNotEmpty>
+		                ORDER BY a.crym, A.sls_brno, a.csno) ROWNUM_
+		         WHERE 15 >= ROWNUM )
+		 WHERE RNUM > 0
+	</select>
+</sqlMap>

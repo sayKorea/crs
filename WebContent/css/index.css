@@ -1,0 +1,34 @@
+@charset "utf-8";
+
+#index_wrap {width:980px;height:100%;margin:0 auto}
+#index_wrap.on .index_table {width:1240px;margin-left:0}
+#index_wrap.on .index_content {width:960px}
+#index_wrap.on {width:1240px}
+#index_wrap.on .index_content .container {width:960px}
+#index_wrap.on #mainCalendar {width:926px;margin:0 0 15px 16px}
+#index_wrap.on .ui-state-highlight {;margin:0 0 16px 13px}
+#index_wrap.on .notice_box {margin:0 0 16px 13px}
+#index_wrap.on #mainCalendar #calendarDay li span {padding:5px 7px 5px 8px}
+#index_wrap.on #calendarDetail #detailOption2 {width:457px}
+#index_wrap.on #sortable {margin:-2px 0 0 2px}
+
+.index_table {width:980px;height:100%;background:#eff2f8}
+.left_menu {width:280px;height:100%;vertical-align:top;background:#fff url(../../common/images/common/bg_left_main.gif) repeat-y}
+.index_content {width:700px;vertical-align:top}
+.left_menu .info {float:left;width:90px;height:100%;}
+
+*html .index_content .container {height:100%}
+.index_content div.container div.header {height:50px;padding-right:25px}
+.index_content div.container div.body {padding:0 0 140px;min-height:463px}
+.index_content div.container div.footer {position:absolute;z-index:3;bottom:0;width:100%;height:140px}
+.index_content div.container div.footer div.widget {padding-top:42px;padding-right:25px}
+.index_content div.container div.footer div.copyright {line-height:48px;font-family:Verdana;font-size:10px;padding-left:38px;background:#fafbfd url(../../common/images/common/bg_index_footer.gif) repeat-y}
+
+div.top_search {text-align:right;font-size:11px;}/* /Utility : Modify, 2014.09.29 Lee */
+div.top_search span.name {font-size:12px;margin-right:40px;}/* /Utility : Modify, 2014.09.29 Lee */
+div.top_search span.bar {color:#e3e5e9;margin:0;padding:0 8px}
+div.top_search div.search a {;margin:0}
+body:first-of-type div.top_search div.search a {margin-right:4px}
+
+.clear {clear:both;height:0}
+.hand {cursor:pointer}

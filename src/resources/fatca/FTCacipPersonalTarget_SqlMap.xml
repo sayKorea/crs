@@ -1,0 +1,450 @@
+<?xml version="1.0" encoding="EUC-KR"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="aciptarget">
+	
+	<select id="selectPrsnlBasListYn" resultClass="string" parameterClass="map">	
+	/** aciptarget.selectPrsnlBasListYn */				 
+		SELECT case when count(*) > 0 then MAX(PRST_DT)
+		            else 'N' 
+		       end reg_Yn
+		FROM TB_CUAH_FATCAPER
+		WHERE csno = #csno#
+		AND prst_dt > (
+		                    SELECT fatca_acip_sdt
+		                    FROM TB_FTCM_ACIPCRI
+		                    WHERE crym = #crym# ) 
+		AND reg_can_dvcd = '1'
+		AND FATCA_PRST_DVCD = '01'
+	</select>
+    
+	<select id="selectPersonalList" resultClass="dbmap" parameterClass="map">
+	/** aciptarget.selectPersonalList */
+		SELECT * FROM (
+			SELECT ROWNUM_.* , ROWNUM AS RNUM FROM 
+			(	
+				SELECT a.sls_brno, /* 영업점코드 */
+				       (SELECT BRC_NM FROM TB_COAM_BRBAS WHERE clo_brc_yn='N' and brno = a.sls_brno) as sls_brnm, /* 영업점명 */ 
+                       a.crym,
+                       a.csno,
+                       (SELECT cust_nm FROM TB_FTCM_CUSTBAS WHERE csno = a.csno AND crym = a.crym AND cust_seq = a.cust_seq) AS cust_nm,
+                       (SELECT rnno FROM TB_FTCM_CUSTBAS WHERE csno = a.csno AND crym = a.crym AND cust_seq = a.cust_seq) AS rnno,
+                       a.fatca_amt_sct_clacd,
+                       (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '114' and use_yn = 'Y' and vld_val =  a.fatca_amt_sct_clacd and crym = a.crym) as fatca_amt_sct_clacd_nm,      
+					   a.fatca_adup_acnt_cnt as acnt_cnt,
+					   a.acnt_smamt as wc_cnvt_balamt,
+					   a.acnt_sumt_usd_cnvt_amt as usd_cnvt_balamt,
+  					   a.fatca_acip_cgp_enob,
+			           (SELECT user_nm FROM TB_COAM_HRUSERBAS where enob = A.fatca_acip_cgp_enob ) as fatca_acip_cgp_ennm,
+			           a.fatca_acip_rppr_enob,
+			           (SELECT user_nm FROM TB_COAM_HRUSERBAS where enob = A.fatca_acip_rppr_enob ) as fatca_acip_rppr_ennm,
+			           a.fatca_cust_rel_mngr_enob,
+			           (SELECT user_nm FROM TB_COAM_HRUSERBAS where enob = A.fatca_cust_rel_mngr_enob ) as fatca_cust_rel_mngr_ennm,
+			           count(*) over() as total_cnt
+                  FROM TB_FTCM_ACIPRSLT a
+                  WHERE a.crym = #crym#
+				  and a.sls_brno = #slsBrno# 
+                 <isNotEmpty property="fatcaAcipRpprEnob">
+			     AND a.fatca_acip_rppr_enob = #fatcaAcipRpprEnob#
+			     </isNotEmpty>
+			     <isNotEmpty property="fatcaAcipCgpEnob">
+			     AND a.fatca_acip_cgp_enob = #fatcaAcipCgpEnob#
+			     </isNotEmpty>
+			     <isNotEmpty property="fatcaCustRelMngrEnob">
+			     AND a.fatca_cust_rel_mngr_enob = #fatcaCustRelMngrEnob#
+			     </isNotEmpty>
+			     <isNotEmpty property="fatcaAmtSctClacd">
+			     <isNotEqual property="fatcaAmtSctClacd" compareValue="0">
+			     AND a.fatca_amt_sct_clacd = #fatcaAmtSctClacd#
+			     </isNotEqual>
+			     </isNotEmpty>
+			     <isNotEmpty property="csno">
+			     AND a.csno = #csno#
+			     </isNotEmpty>
+			     <isNotEmpty property="fatcaCustRelMngrEnob">
+			     AND a.fatca_cust_rel_mngr_enob = #fatcaCustRelMngrEnob#
+			     </isNotEmpty>	
+		  		AND a.fatca_tpcd = '01'
+                ORDER BY a.crym, sls_brno, a.csno				
+			) ROWNUM_
+			WHERE   #pagingEnd# >= ROWNUM  
+		) WHERE RNUM > #pagingStart#
+	</select>
+	
+	<!-- 개인고객 상세조회 - 기본정보(fatca확인서가 없을경우) -->
+	<select id="selectPrsnlBasList" resultClass="dbmap" parameterClass="map">
+	/** aciptarget.selectPrsnlBasList */
+		SELECT a.csno,
+		      (select cust_nm from TB_FTCM_CUSTBAS where crym = a.crym and csno = a.csno and cust_seq = a.cust_seq ) as cust_nm,
+		      a.fatca_amt_sct_clacd,
+			  ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '114' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_amt_sct_clacd ) as fatca_amt_sct_clacd_nm,
+			  a.fatca_cust_dvcd,
+			  (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '115' and use_yn = 'Y' and vld_val = a.fatca_cust_dvcd and crym = a.crym) as fatca_cust_dvcd_nm,
+		      (select rnno from TB_FTCM_CUSTBAS where crym = a.crym and csno = a.csno and cust_seq = a.cust_seq ) as rnno,
+		      ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '136' and use_yn = 'Y' and crym = a.crym and vld_val = (select cust_nacd from TB_FTCM_CUSTBAS where crym = a.crym and csno = a.csno and cust_seq = a.cust_seq ) ) as cust_nacd,
+      		  ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '136' and use_yn = 'Y' and crym = a.crym and vld_val = (select taxtn_nacd from TB_FTCM_CUSTBAS where crym = a.crym and csno = a.csno and cust_seq = a.cust_seq ) ) as taxtn_nacd,
+		      /** (select decode(SEX_DVCD, '10', '남자', '20', '여자', '') from TB_CUAD_PRSNL where csno = a.csno and cust_seq = a.cust_seq) as sex, */
+		      (select ddd || '-' || tlxcno || '-' || tlndno from tb_cuad_tel where csno = a.csno and cust_tel_tpcd ='01') as phone,
+		      (select usr_ad
+				from (
+				select ' (' || a.PSNO || '-' || a.PSNO_SEQ || ') ' || a.ATMT_ADDR1 || a.ATMT_ADDR2 AS USR_AD
+				FROM TB_CUAD_ADDR a   
+				WHERE csno = #csno#
+				and cust_addr_tpcd in ('01','02')
+				order by cust_addr_tpcd)
+				where usr_ad is not null
+				and rownum = 1) as address,		      		      
+  			  a.sls_brno || ' / ' || 
+				       (SELECT BRC_NM FROM TB_COAM_BRBAS WHERE clo_brc_yn='N' and brno = a.sls_brno) as sls_brno_fmt,
+			  a.fatca_acip_rppr_enob,
+			  (SELECT user_nm FROM TB_COAM_HRUSERBAS WHERE enob = A.fatca_acip_rppr_enob ) as fatca_acip_rppr_ennm,
+			  a.fatca_acip_cgp_enob,
+			  (SELECT user_nm FROM TB_COAM_HRUSERBAS WHERE enob = A.fatca_acip_cgp_enob ) as fatca_acip_cgp_ennm,
+			  a.fatca_cust_rel_mngr_enob,
+			  (SELECT user_nm FROM TB_COAM_HRUSERBAS WHERE enob = A.fatca_cust_rel_mngr_enob ) as fatca_cust_rel_mngr_ennm,
+		      to_char(a.acnt_smamt, 'FM999,999,999,999,999,990') as acnt_smamt,
+			  to_char(a.acnt_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as acnt_sumt_usd_cnvt_amt,
+			  to_char(a.dpo_smamt, 'FM999,999,999,999,999,990') as dpo_smamt,
+			  to_char(a.dpo_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as dpo_sumt_usd_cnvt_amt,
+			  to_char(a.pen_smamt, 'FM999,999,999,999,999,990') as pen_smamt,
+			  to_char(a.pen_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as pen_sumt_usd_cnvt_amt,
+			  to_char(a.trst_smamt, 'FM999,999,999,999,999,990') as trst_smamt,
+			  to_char(a.trst_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as trst_sumt_usd_cnvt_amt,
+			  to_char(a.dbtr_smamt, 'FM999,999,999,999,999,990') as dbtr_smamt,
+			  to_char(a.dbtr_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as dbtr_sumt_usd_cnvt_amt,
+			  a.fatca_rept_trget_dvcd,
+			  ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '120' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_rept_trget_dvcd ) as fatca_rept_trget_dvcd_nm,
+			  a.fatca_cz_acip_rscd,
+			  ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '116' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_cz_acip_rscd ) as fatca_cz_acip_rscd_nm,
+			  a.fatca_doc_acip_rscd,
+			  ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '117' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_doc_acip_rscd ) as fatca_doc_acip_rscd_nm,
+			  a.fatca_iqr_rscd,
+			  ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '118' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_iqr_rscd ) as fatca_iqr_rscd_nm,
+			  a.fatca_cfrrpt_acip_rscd,
+			  ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '119' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_cfrrpt_acip_rscd ) as fatca_cfrrpt_acip_rscd_nm	  
+		FROM TB_FTCM_ACIPRSLT a
+		WHERE a.crym = #crym#
+		  AND a.csno = #csno#
+		  AND a.fatca_tpcd = '01'
+	</select>
+	
+	
+	<!-- 개인고객 상세조회 - 기본정보(fatca확인서가 있을경우) -->
+	<select id="selectPrsnlBasYList" resultClass="dbmap" parameterClass="map">	
+	/** aciptarget.selectPrsnlBasYList */	
+		SELECT a.csno, /* 고객번호 */
+		       b.fatca_cust_nm as cust_nm, /* 고객명 */
+			   '*'||substr(b.fatca_cust_nm, 2) as cust_nm_msk,
+		       a.fatca_amt_sct_clacd, /* 금액구간분류코드 */
+			   ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '114' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_amt_sct_clacd ) as fatca_amt_sct_clacd_nm, /* 금액구간분류코드명 */
+			   b.fatca_cust_tpcd, /* 금액구간분류코드 */
+			   (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '115' and use_yn = 'Y' and vld_val = a.fatca_cust_dvcd and crym = a.crym) as fatca_cust_dvcd_nm,
+		       (select rnno from TB_FTCM_CUSTBAS where crym = a.crym and csno = a.csno and cust_seq = a.cust_seq ) as rnno,
+		       ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '136' and use_yn = 'Y' and crym = a.crym and vld_val = b.cust_nacd ) as cust_nacd,
+		       ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '136' and use_yn = 'Y' and crym = a.crym and vld_val = b.taxtn_nacd ) as taxtn_nacd,
+		       (select decode(SEX_DVCD, '10', '남자', '20', '여자', '') from TB_CUAD_PRSNL where csno = a.csno and cust_seq = a.cust_seq) as sex,
+		       b.fatca_cust_tlno as phone,
+		       b.fatca_prsnl_hg_addr as address,		      
+  			  a.sls_brno || ' / ' || 
+				       (SELECT BRC_NM FROM TB_COAM_BRBAS WHERE clo_brc_yn='N' and brno = a.sls_brno) as sls_brno_fmt,
+			   a.fatca_acip_rppr_enob,
+			   (SELECT user_nm FROM TB_COAM_HRUSERBAS WHERE enob = A.fatca_acip_rppr_enob ) as fatca_acip_rppr_ennm,
+			   a.fatca_acip_cgp_enob,
+			   (SELECT user_nm FROM TB_COAM_HRUSERBAS WHERE enob = A.fatca_acip_cgp_enob ) as fatca_acip_cgp_ennm,
+			   a.fatca_cust_rel_mngr_enob,
+			   (SELECT user_nm FROM TB_COAM_HRUSERBAS WHERE enob = A.fatca_cust_rel_mngr_enob ) as fatca_cust_rel_mngr_ennm,
+		       to_char(a.acnt_smamt, 'FM999,999,999,999,999,990') as acnt_smamt,
+			   to_char(a.acnt_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as acnt_sumt_usd_cnvt_amt,
+			   to_char(a.dpo_smamt, 'FM999,999,999,999,999,990') as dpo_smamt,
+			   to_char(a.dpo_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as dpo_sumt_usd_cnvt_amt,
+			   to_char(a.pen_smamt, 'FM999,999,999,999,999,990') as pen_smamt,
+			   to_char(a.pen_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as pen_sumt_usd_cnvt_amt,
+			   to_char(a.trst_smamt, 'FM999,999,999,999,999,990') as trst_smamt,
+			   to_char(a.trst_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as trst_sumt_usd_cnvt_amt,
+			   to_char(a.dbtr_smamt, 'FM999,999,999,999,999,990') as dbtr_smamt,
+			   to_char(a.dbtr_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as dbtr_sumt_usd_cnvt_amt,
+			   a.fatca_rept_trget_dvcd,
+			   ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '120' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_rept_trget_dvcd ) as fatca_rept_trget_dvcd_nm,
+			   a.fatca_cz_acip_rscd,
+			   ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '116' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_cz_acip_rscd ) as fatca_cz_acip_rscd_nm,
+			   a.fatca_doc_acip_rscd,
+			   ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '117' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_doc_acip_rscd ) as fatca_doc_acip_rscd_nm,
+			   a.fatca_iqr_rscd,
+			   ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '118' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_iqr_rscd ) as fatca_iqr_rscd_nm,
+			   a.fatca_cfrrpt_acip_rscd,
+			   ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '119' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_cfrrpt_acip_rscd ) as fatca_cfrrpt_acip_rscd_nm	  
+		FROM TB_FTCM_ACIPRSLT a,
+     		 TB_CUAH_FATCAPER b
+		WHERE a.csno = b.csno
+		  AND a.cust_seq = b.cust_seq
+		  AND a.crym = #crym#
+		  AND a.csno = #csno#
+		  AND a.fatca_tpcd = '01'
+		  AND b.prst_dt = #maxPrstDt#
+		  AND b.fatca_cfrrpt_seq = (
+		                            select MAX(fatca_cfrrpt_seq) 
+		                            from TB_CUAH_FATCAPER 
+		                            where csno = #csno# 
+		                            and prst_dt <![CDATA[>]]> #crym#
+		                            )
+	</select>
+    
+    <!-- 개인고객 상세조회 - 탭(실사이력) -->
+	<select id="selectHistList" resultClass="dbmap" parameterClass="map">
+	/** aciptarget.selectHistList */
+		SELECT a.crym, /* 기준일자 */
+			  substr(a.crym, 0, 4) || '-' || substr(a.crym, 5) as crym_fmt,
+			  a.fatca_acip_compt_dt,
+			  to_char(to_date(decode(a.fatca_acip_compt_dt, '99991231', '', a.fatca_acip_compt_dt), 'yyyyMMdd'), 'yyyy-MM-dd') as compt_dt_fmt,			  
+			  a.fatca_amt_sct_clacd,
+			  ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '114' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_amt_sct_clacd ) as fatca_amt_sct_clacd_nm,
+			  a.fatca_cust_dvcd,
+			  (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '115' and use_yn = 'Y' and vld_val = a.fatca_cust_dvcd and crym = a.crym) as fatca_cust_dvcd_nm,
+		      a.fatca_rept_trget_dvcd,
+			  ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '120' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_rept_trget_dvcd ) as fatca_rept_trget_dvcd_nm,
+			  a.fatca_cz_acip_rscd,
+			  ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '116' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_cz_acip_rscd ) as fatca_cz_acip_rscd_nm,
+			  a.fatca_doc_acip_rscd,
+			  ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '117' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_doc_acip_rscd ) as fatca_doc_acip_rscd_nm,
+			  a.fatca_iqr_rscd,
+			  ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '118' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_iqr_rscd ) as fatca_iqr_rscd_nm,
+			  a.fatca_cfrrpt_acip_rscd,
+			  ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '119' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_cfrrpt_acip_rscd ) as fatca_cfrrpt_acip_rscd_nm
+		FROM TB_FTCM_ACIPRSLT a
+		WHERE a.csno = #csno#
+		  AND a.crym = #crym#
+		  AND a.fatca_tpcd = '01'
+		ORDER BY a.csno desc, a.fatca_acip_compt_dt
+	</select>	
+	
+    <!-- 개인고객 상세조회 - 탭(FATCA 확인서 제출이력) -->
+	<select id="selectPrstHistList" resultClass="dbmap" parameterClass="map">
+	/** aciptarget.selectPrstHistList */
+	SELECT *
+	FROM (
+		SELECT #crym# as crym, /* 기준일자 */
+			   decode(#crym#, ' ', '', (substr(#crym#, 0, 4) || '-' || substr(#crym#, 5))) as crym_fmt,
+		       a.prst_dt, 				/* 제출일자 */
+		       to_char(to_date(decode(a.prst_dt, '99991231', '', a.prst_dt),'yyyyMMdd'), 'yyyy-MM-dd') as prst_dt_fmt,
+			   a.fatca_cfrrpt_seq, 		/* fatca확인서일련번호 */
+			   a.fatca_cust_tpcd, 		/* fatca고객유형코드 */
+		       (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '109' and use_yn = 'Y' and crym = #crym# and vld_val = a.fatca_cust_tpcd ) as fatca_cust_tpcd_nm, /* fatca고객유형코드 */
+		       decode(a.fatca_txpayr_no,a.fatca_txpayr_no,'0',substr(a.fatca_txpayr_no,0,7)||'******') as fatca_txpayr_no, /* 납세자번호 */
+		       a.fatca_eng_fsn, /* fatca영문성 */
+		       a.fatca_enm,/* fatca영문명 */
+		       a.fatca_prsnl_hg_addr, /* fatca개인한글주소 */
+		       a.fatca_prst_dvcd, /* fatca 제출구분코드 */
+		       (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '106' and use_yn = 'Y' and crym = #crym# and vld_val = a.fatca_prst_dvcd ) as fatca_prst_dvcd_nm /* fatca 제출구분코드 */
+		FROM TB_CUAH_FATCAPER a
+		WHERE a.csno = #csno#	
+		AND reg_can_dvcd = '1'
+		ORDER BY a.prst_dt desc, a.fatca_cfrrpt_seq desc 
+	    ) a
+	WHERE rownum <![CDATA[<]]> 5
+	</select>	
+	
+	<!-- 개인고객 상세조회 - 탭(합산이력) -->
+	<select id="selectAdupHistList" resultClass="dbmap" parameterClass="map">
+	/** aciptarget.selectAdupHistList */
+		SELECT crym, /* 기준일자 */
+		       decode(crym, ' ', '', ( substr(crym, 0, 4) || '-' || substr(crym, 5))) as crym_fmt,
+		       csno,
+		       (select  TO_CHAR(LAST_DAY(TO_DATE(#crym#, 'YYYYMM')), 'YYYYMMDD') from dual) as fatca_adupdt,
+		       decode((select  TO_CHAR(LAST_DAY(TO_DATE(#crym#, 'YYYYMM')), 'YYYYMMDD') from dual), '', '', 
+		       		  (substr((select  TO_CHAR(LAST_DAY(TO_DATE(#crym#, 'YYYYMM')), 'YYYYMMDD') from dual), 0, 4) || '-' || 
+		       		   substr((select  TO_CHAR(LAST_DAY(TO_DATE(#crym#, 'YYYYMM')), 'YYYYMMDD') from dual), 5, 2) || '-' || 
+		       		   substr((select  TO_CHAR(LAST_DAY(TO_DATE(#crym#, 'YYYYMM')), 'YYYYMMDD') from dual), 7))) as fatca_adupdt_fmt,		  
+			   to_char(acnt_smamt, 'FM999,999,999,999,999,990') as acnt_smamt,
+			   to_char(acnt_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as acnt_sumt_usd_cnvt_amt,			  
+			   to_char(dpo_smamt, 'FM999,999,999,999,999,990') as dpo_smamt,
+			   to_char(dpo_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as dpo_sumt_usd_cnvt_amt,			  
+			   to_char(pen_smamt, 'FM999,999,999,999,999,990') as pen_smamt,
+			   to_char(pen_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as pen_sumt_usd_cnvt_amt,			  
+			   to_char(trst_smamt, 'FM999,999,999,999,999,990') as trst_smamt,
+			   to_char(trst_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as trst_sumt_usd_cnvt_amt,			  
+			   to_char(dbtr_smamt, 'FM999,999,999,999,999,990') as dbtr_smamt,
+			   to_char(dbtr_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as dbtr_sumt_usd_cnvt_amt
+		FROM TB_FTCM_ACIPRSLT
+		WHERE csno = #csno#
+		AND crym = #crym#
+		AND fatca_tpcd = '01'
+		ORDER BY crym desc
+	</select>	
+	
+	<!-- 개인고객 상세조회 - 탭(보고이력) -->
+	<select id="selectReptHistList" resultClass="dbmap" parameterClass="map">
+	/** aciptarget.selectReptHistList */
+		SELECT a.crym, /* 기준일자 */
+		       decode(a.crym, ' ', '', ( substr(a.crym, 0, 4) || '-' || substr(a.crym, 5))) as crym_fmt,
+		       a.csno,
+		       (SELECT fatca_rept_compt_dt FROM TB_FTCM_ACIPCRI WHERE crym = a.crym) as fatca_rept_dt,
+		       decode((SELECT fatca_rept_compt_dt FROM TB_FTCM_ACIPCRI WHERE crym = a.crym), '', '', 
+		       		  (substr((SELECT fatca_rept_compt_dt FROM TB_FTCM_ACIPCRI WHERE crym = a.crym), 0, 4) || '-' || 
+		       		   substr((SELECT fatca_rept_compt_dt FROM TB_FTCM_ACIPCRI WHERE crym = a.crym), 5, 2) || '-' || 
+		       		   substr((SELECT fatca_rept_compt_dt FROM TB_FTCM_ACIPCRI WHERE crym = a.crym), 7))) as rept_dt_fmt,
+		       a.fatca_rept_trget_dvcd,
+		       (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '120' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_rept_trget_dvcd ) as fatca_rept_trget_dvcd_nm,
+		       b.fatca_cust_dvcd,  /* 고객구분코드(FATCA고객유형) */
+		       (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '115' and use_yn = 'Y' and crym = a.crym and vld_val = b.fatca_cust_dvcd ) as fatca_cust_dvcd_nm /* 고객구분코드(FATCA고객유형명) */		
+		FROM tb_ftcm_repttrgetprsnlbas a,
+			TB_FTCM_ACIPRSLT b
+		WHERE a.csno = #csno#
+		AND a.crym = #crym#
+		AND a.crym = b.crym
+	 	AND a.csno = b.csno
+	 	AND a.cust_seq = b.cust_seq
+		ORDER BY crym desc
+	</select>	
+		
+	
+	<!-- 개인고객 상세조회 - 탭(합산이력 상세) -->
+	<select id="selectAdupHistDetail_OLD" resultClass="dbmap" parameterClass="map">
+	/** aciptarget.selectAdupHistDetail */
+		SELECT a.crym, /* 기준일자 */
+		       decode(a.crym, ' ', '', ( substr(a.crym, 0, 4) || '-' || substr(a.crym, 5))) as crym_fmt,
+			   (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '801' and use_yn = 'Y' and crym = #crym# and vld_val = b.fatca_pd_clacd ) as fatca_pd_clacd_nm,
+			   b.pd_knm,
+		       substr(a.acno,0,length(a.acno)-4)||'****' as acno,
+		       a.curc,
+		       to_char(a.acnt_balamt, 'FM999,999,999,999,999,990') as acnt_balamt,
+		       to_char(a.wc_cnvt_balamt, 'FM999,999,999,999,999,990') as wc_cnvt_balamt,
+			   to_char(a.usd_cnvt_balamt, 'FM999,999,999,999,990.90') as usd_cnvt_balamt
+		FROM TB_FTCM_ACNTBAS a,
+		     TB_FTCM_TRGETPDBAS b 
+		WHERE a.crym = b.crym
+		AND a.pd_cd = b.pd_cd
+  		AND a.fatca_pd_clacd != '99'
+		AND a.crym = #crym#
+		AND a.csno = #csno#		
+		AND a.cust_seq = '0000'
+		UNION ALL
+		SELECT a.crym, 
+		       decode(a.crym, ' ', '', ( substr(a.crym, 0, 4) || '-' || substr(a.crym, 5))) as crym_fmt,
+			   (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '801' and use_yn = 'Y' and crym = #crym# and vld_val = b.fatca_pd_clacd ) as fatca_pd_clacd_nm,
+			   b.pd_knm,
+		       substr(a.acno,0,length(a.acno)-4)||'****' as acno,
+		       a.curc,
+		       to_char(a.acnt_balamt, 'FM999,999,999,999,999,990') as acnt_balamt,
+		       to_char(a.wc_cnvt_balamt, 'FM999,999,999,999,999,990') as wc_cnvt_balamt,
+			   to_char(a.usd_cnvt_balamt, 'FM999,999,999,999,990.90') as usd_cnvt_balamt
+		FROM TB_FTCM_ACNTBAS a,
+		     TB_FTCM_TRGETPDBAS b,
+		     TB_FTCM_ACIPRSLT c
+		WHERE a.crym = b.crym
+		AND a.pd_cd = b.pd_cd
+  		AND a.fatca_pd_clacd != '99'
+		AND a.crym = #crym#		
+		AND a.cust_seq = '0000'
+		AND a.csno = c.csno
+		AND a.csno != #csno#
+		AND c.smpsn_id = (select decode(smpsn_id,'~','0',smpsn_id) from TB_FTCM_ACIPRSLT where crym=#crym# and csno=#csno#)
+	</select>	
+	
+	<select id="selectAdupHistDetailBySelf" resultClass="dbmap" parameterClass="map">
+	/** aciptarget.selectAdupHistDetailBySelf */
+		SELECT a.crym, a.csno,
+		       decode(a.crym, ' ', '', ( substr(a.crym, 0, 4) || '-' || substr(a.crym, 5))) as crym_fmt,
+			   (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '801' and use_yn = 'Y' and crym = #crym# and vld_val = b.fatca_pd_clacd ) as fatca_pd_clacd_nm,
+			   b.pd_knm,
+		       substr(a.acno,0,length(a.acno)-4)||'****' as acno,
+		       a.curc,
+		       to_char(a.acnt_balamt, 'FM999,999,999,999,999,990') as acnt_balamt,
+		       to_char(a.wc_cnvt_balamt, 'FM999,999,999,999,999,990') as wc_cnvt_balamt,
+			   to_char(a.usd_cnvt_balamt, 'FM999,999,999,999,990.90') as usd_cnvt_balamt
+		FROM TB_FTCM_ACNTBAS a,
+		     TB_FTCM_TRGETPDBAS b 
+		WHERE a.crym = b.crym
+		AND a.pd_cd = b.pd_cd
+  		AND a.fatca_pd_clacd != '99'
+		AND a.crym = #crym#
+		AND a.csno = #csno#		
+		AND a.cust_seq = '0000'
+		order by fatca_pd_clacd_nm, pd_knm, acno
+	</select>	
+	
+	<select id="selectAdupHistDetailBySmpsnId" resultClass="dbmap" parameterClass="map">
+	/** aciptarget.selectAdupHistDetailBySmpsnId */
+		SELECT a.crym, a.csno,
+		       decode(a.crym, ' ', '', ( substr(a.crym, 0, 4) || '-' || substr(a.crym, 5))) as crym_fmt,
+			   (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '801' and use_yn = 'Y' and crym = #crym# and vld_val = b.fatca_pd_clacd ) as fatca_pd_clacd_nm,
+			   b.pd_knm,
+		       substr(a.acno,0,length(a.acno)-4)||'****' as acno,
+		       a.curc,
+		       to_char(a.acnt_balamt, 'FM999,999,999,999,999,990') as acnt_balamt,
+		       to_char(a.wc_cnvt_balamt, 'FM999,999,999,999,999,990') as wc_cnvt_balamt,
+			   to_char(a.usd_cnvt_balamt, 'FM999,999,999,999,990.90') as usd_cnvt_balamt
+		FROM tb_ftcm_aciprslt c, tb_ftcm_acntbas a, tb_ftcm_trgetpdbas b 
+		WHERE c.crym = #crym#
+	    AND c.cust_seq = '0000'
+	    AND c.crym = a.crym
+	    AND c.csno = a.csno
+	    AND c.cust_seq = a.cust_seq
+	    AND a.crym = b.crym
+	    AND a.pd_cd = b.pd_cd
+	    AND a.fatca_pd_clacd != '99'
+	    and c.csno != #csno#
+	    AND c.smpsn_id = #smpsnId#
+	    order by fatca_pd_clacd_nm, pd_knm, acno
+	</select>	
+	
+	<select id="selectSmpsnId" resultClass="string" parameterClass="map">
+	/** aciptarget.selectSmpsnId */
+		select decode(smpsn_id,'~','0',smpsn_id) as smpsn_id
+		from TB_FTCM_ACIPRSLT 
+		where crym=#crym# 
+		and csno=#csno#
+		and cust_seq = '0000'
+	</select>
+	
+	<!-- 개인고객 상세조회 - 탭(보고이력 상세) -->
+	<select id="selectReptHistDetail" resultClass="dbmap" parameterClass="map">
+	/** aciptarget.selectReptHistDetail */
+		SELECT a.crym, 
+		       decode(a.crym, ' ', '', ( substr(a.crym, 0, 4) || '-' || substr(a.crym, 5))) as crym_fmt,
+		       a.fatca_enm || ' ' || fatca_eng_fsn as eng_full_nm,
+		       #reptDtFmt# as rept_dt_fmt,
+		       a.csno,
+		       a.smpsn_id,
+		       a.cust_nm,
+		       '*'||substr(a.cust_nm, 2) as cust_nm_msk,
+		       a.fatca_prsnl_eng_addr,
+		       decode(a.fatca_txpayr_no,a.fatca_txpayr_no,'0',substr(a.fatca_txpayr_no,0,7)||'******') as fatca_txpayr_no, 
+		       substr(b.acno,0,length(b.acno)-4)||'****' as acno,
+		       a.bird,
+		       to_char(b.acnt_balamt, 'FM999,999,999,999,999,990') as acnt_balamt
+		FROM TB_FTCM_REPTTRGETPRSNLBAS a,
+		  TB_FTCM_REPTTRGETACNTBAS b
+		WHERE a.crym = b.crym
+		  and a.csno = b.csno
+		  and a.cust_seq = b.cust_seq
+		  and a.crym = #crym#
+	      and a.csno = #csno#
+	      and a.cust_seq = '0000'
+		  UNION
+		  SELECT a.crym, 
+		       decode(a.crym, ' ', '', ( substr(a.crym, 0, 4) || '-' || substr(a.crym, 5))) as crym_fmt,
+		       a.fatca_enm || ' ' || fatca_eng_fsn as eng_full_nm,
+		       #reptDtFmt# as rept_dt_fmt,
+		       a.csno,
+		       a.smpsn_id,
+		       a.cust_nm,
+		       '*'||substr(a.cust_nm, 2) as cust_nm_msk,
+		       a.fatca_prsnl_eng_addr,
+		       decode(a.fatca_txpayr_no,a.fatca_txpayr_no,'0',substr(a.fatca_txpayr_no,0,7)||'******') as fatca_txpayr_no, 
+		       substr(b.acno,0,length(b.acno)-4)||'****' as acno,
+		       a.bird,
+		       to_char(b.acnt_balamt, 'FM999,999,999,999,999,990') as acnt_balamt
+		FROM TB_FTCM_REPTTRGETPRSNLBAS a,
+		  TB_FTCM_REPTTRGETACNTBAS b
+		WHERE a.smpsn_id = ( select decode(smpsn_id,'~','0',smpsn_id)
+							 from TB_FTCM_REPTTRGETPRSNLBAS
+							 where crym = #crym#
+							 and csno = #csno#
+							 and cust_seq = '0000')
+		  and a.crym = b.crym
+		  and a.csno = b.csno
+		  and a.cust_seq = b.cust_seq
+	</select>	
+	
+	
+</sqlMap>

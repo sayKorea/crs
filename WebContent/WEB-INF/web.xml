@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app id="WebApp_ID" version="2.4" xmlns="http://java.sun.com/xml/ns/j2ee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd">
+	<display-name>fatca</display-name>
+
+	<!-- displaytag -->
+	<filter>
+		<filter-name>ResponseOverrideFilter</filter-name>
+		<filter-class>
+			org.displaytag.filter.ResponseOverrideFilter
+		</filter-class>
+	</filter>
+
+	<!-- Character Encoding Filter -->
+	<filter>
+		<filter-name>Set Character Encoding</filter-name>
+		<filter-class>fatca.common.filter.FTCEncodingFilter</filter-class>
+		<init-param>
+			<param-name>encoding</param-name>
+			<param-value>euc-kr</param-value>
+		</init-param>
+	</filter>
+	
+	<!--  -->
+	<filter>
+		<filter-name>AuthFilter</filter-name>
+		<filter-class>fatca.common.filter.FTCAuthFilter</filter-class>
+		<init-param>			
+			<param-name>loginAction</param-name>
+			<param-value>/login.do?method=login</param-value>
+		</init-param>
+		<init-param>			
+			<param-name>loginSsoAction</param-name>
+			<param-value>/login.do?method=loginSso</param-value>
+		</init-param>
+		<init-param>			
+			<param-name>loginPage</param-name>
+			<param-value>/ftc_login.jsp</param-value>			
+		</init-param>	
+		<init-param>			
+			<param-name>noAuthPage</param-name>
+			<param-value>/login.do?method=loginf</param-value>	
+		</init-param>
+		<init-param>			
+			<param-name>noSessionPage</param-name>
+			<param-value>/ftc_noSession.jsp</param-value>	
+		</init-param>	
+	</filter>
+   	
+	<!-- CharaterSet -->
+	<filter-mapping>
+		<filter-name>Set Character Encoding</filter-name>
+		<url-pattern>*.jsp</url-pattern>
+	</filter-mapping>
+
+	<filter-mapping>
+		<filter-name>Set Character Encoding</filter-name>
+		<url-pattern>*.do</url-pattern>
+	</filter-mapping>
+	
+		
+	<filter-mapping>
+		<filter-name>ResponseOverrideFilter</filter-name>
+		<url-pattern>*.do</url-pattern>
+	</filter-mapping>
+
+	
+	<filter-mapping>
+		<filter-name>AuthFilter</filter-name>
+		<url-pattern>*.do</url-pattern>
+	</filter-mapping>
+	
+	
+	<servlet>
+		<servlet-name>action</servlet-name>
+		<servlet-class>
+			org.apache.struts.action.ActionServlet
+		</servlet-class>
+		<init-param>
+			<param-name>config</param-name>
+			<param-value>
+				/WEB-INF/struts-config-acip.xml,
+				/WEB-INF/struts-config-system.xml,
+				/WEB-INF/struts-config-crs.xml
+			</param-value>
+		</init-param>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+
+  	<servlet>
+	    <servlet-name>DownLoadServlet</servlet-name>
+	    <display-name>DownLoadServlet</display-name>
+	    <servlet-class>fatca.common.DownLoadServlet</servlet-class>
+	</servlet>
+
+  	
+	<servlet-mapping>
+		<servlet-name>action</servlet-name>
+		<url-pattern>*.do</url-pattern>
+	</servlet-mapping>
+    
+    <servlet-mapping>
+		<servlet-name>action</servlet-name>
+		<url-pattern>*.ajx</url-pattern>
+	</servlet-mapping>
+	
+	  <servlet-mapping>
+	    <servlet-name>DownLoadServlet</servlet-name>
+	    <url-pattern>/DownLoadServlet</url-pattern>
+	  </servlet-mapping>
+	
+    
+	<session-config>
+		<session-timeout>-1
+		</session-timeout>
+	</session-config>
+
+	<mime-mapping>
+        <extension>hwp</extension>
+        <mime-type>application/hwp</mime-type>
+    </mime-mapping>
+	
+    <mime-mapping>
+       <extension>xls</extension>
+       <mime-type>application/vnd.ms-excel;charset=euc-kr</mime-type>
+    </mime-mapping>
+
+    <mime-mapping>
+       <extension>doc</extension>
+       <mime-type>application/vnd.ms-word;charset=euc-kr</mime-type>
+    </mime-mapping>	
+
+	<welcome-file-list>
+		<welcome-file>ftc_index.jsp</welcome-file>
+	</welcome-file-list>
+	
+	<error-page>
+		<error-code>404</error-code>
+		<location>/error/ftc_sorry.jsp</location>
+	</error-page>
+
+	<error-page>
+		<error-code>500</error-code>
+		<location>/error/ftc_error.jsp</location>
+	</error-page>
+	
+	<jsp-config>
+		<taglib>
+			<taglib-uri>knkal</taglib-uri>
+			<taglib-location>/WEB-INF/tlds/kkl.tld</taglib-location>
+		</taglib>
+		<taglib>
+			<taglib-uri>http://displaytag.sf.net/el</taglib-uri>
+			<taglib-location> /WEB-INF/tlds/displaytag.tld </taglib-location>
+		</taglib>
+		<jsp-property-group>
+			<url-pattern>*.jsp</url-pattern>
+			<page-encoding>EUC-KR</page-encoding>
+		</jsp-property-group>
+		
+	</jsp-config>
+	
+	<resource-ref>
+	    <res-ref-name>FATDS</res-ref-name> 
+	    <res-type>javax.sql.DataSource</res-type> 
+	    <res-auth>Container</res-auth> 
+  	</resource-ref>
+  
+</web-app>

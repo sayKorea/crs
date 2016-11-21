@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="EUC-KR"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="acipready">
+
+  	
+	<select id="selectBasicInfo" resultClass="dbmap" parameterClass="map">		
+	/** acipready.selectBasicInfo */
+		SELECT 
+			   CRYM, 
+			   FATCA_ACIP_CRDT,	
+			   FATCA_ACIP_SDT, 
+			   FATCA_ACIP_EDT, 
+			   CLSN_YN,
+			   FATCA_REPT_CRDT, 
+			   FATCA_REPT_COMPT_DT, 
+			   CGP_ENOB, 
+			   (select USER_NM from TB_COAM_HRUSERBAS where ENOB = a.cgp_enob) cgp_ennm, 
+			   RGDT, 
+			   FTM_FW_DT, 
+			   SCTM_FW_DT, 
+			   TDTM_FW_DT, 
+			   FRTM_FW_DT, 
+			   CURC, 
+			   FATCA_PRSNL_LA_CAAMT, 
+			   FATCA_PRSNL_HAMT_CAAMT, 
+			   FATCA_COPR_LA_CAAMT, 
+			   FATCA_COPR_HAMT_CAAMT, 
+			   FATCA_OD_DPO_ACNT_CAAMT, 
+			   FATCA_OD_PEN_ACNT_CAAMT,
+			   NEW_DPO_ACNT_CAAMT, 
+			   TAXTN_NACD, 
+			   FST_REG_DTL_DTTI, FST_RGPR_ENOB, FST_REG_BRNO, 
+			   LT_CH_DTL_DTTI, LT_CHPR_ENOB, LT_CH_BRNO
+		FROM tb_ftcm_ACIPCRI a
+		<isEmpty property="crym">
+		WHERE CRYM = (select max(crym) from tb_ftcm_acipcri)
+		</isEmpty>
+		<isNotEmpty property="crym">
+		WHERE CRYM = #crym#
+		</isNotEmpty>
+		
+	</select>
+	
+		
+	
+	<insert id="insertBasicInfo" parameterClass="map">		
+	/** acipready.insertBasicInfo */
+		INSERT INTO tb_ftcm_ACIPCRI (
+		   CRYM, FATCA_ACIP_CRDT, FATCA_ACIP_SDT, 		   
+		   FATCA_ACIP_EDT, CLSN_YN, 		   
+		   FATCA_REPT_CRDT, 
+		   FATCA_REPT_COMPT_DT, CGP_ENOB, 		   
+		   RGDT, 
+		   CURC, 
+		   FATCA_PRSNL_LA_CAAMT, FATCA_PRSNL_HAMT_CAAMT, 
+		   FATCA_COPR_LA_CAAMT, FATCA_COPR_HAMT_CAAMT, 
+		   FATCA_OD_DPO_ACNT_CAAMT, 
+		   FATCA_OD_PEN_ACNT_CAAMT, NEW_DPO_ACNT_CAAMT, 
+		   FTM_FW_DT, SCTM_FW_DT, TDTM_FW_DT, FRTM_FW_DT, 
+		   TAXTN_NACD, 
+		   FST_REG_DTL_DTTI, FST_RGPR_ENOB, FST_REG_BRNO, 
+		   LT_CH_DTL_DTTI, LT_CHPR_ENOB, LT_CH_BRNO) 
+		VALUES ( #crym#, #fatcaAcipCrdt#, #fatcaAcipSdt#,		
+		    #fatcaAcipEdt#, 'N',
+		    #fatcaReptCrdt#,		    
+		    #fatcaReptComptDt#, #enob#, 
+		    to_char(sysdate,'yyyymmdd'),
+		    'USD',
+		    #fatcaPrsnlLaCaamt#,#fatcaPrsnlHamtCaamt#, 
+		    #fatcaCoprLaCaamt#, #fatcaCoprHamtCaamt#,
+		    #fatcaOdDpoAcntCaamt#,
+		    #fatcaOdPenAcntCaamt#, #newDpoAcntCaamt#, 
+		    #ftmFwDt#, #sctmFwDt#, #tdtmFwDt#,#frtmFwDt#, 
+		    'US',
+		    systimestamp, #enob#, #brno#,
+		    systimestamp, #enob#, #brno#)
+	</insert>
+	
+	
+	<update id="updateBasicInfo" parameterClass="map">		
+	/** acipready.updateBasicInfo */
+		UPDATE tb_ftcm_ACIPCRI
+		SET    CRYM                       = #crym#,
+		       FATCA_ACIP_CRDT            = #fatcaAcipCrdt#,
+		       FATCA_ACIP_SDT             = #fatcaAcipSdt#,
+		       FATCA_ACIP_EDT             = #fatcaAcipEdt#,
+		       CLSN_YN                    = 'N',
+		       FATCA_REPT_CRDT            = #fatcaReptCrdt#,
+		       FATCA_REPT_COMPT_DT        = #fatcaReptComptDt#,
+		       CGP_ENOB                   = #enob#,
+		       RGDT                       = to_char(sysdate,'yyyymmdd'),
+		       FTM_FW_DT                  = #ftmFwDt#,
+		       SCTM_FW_DT                 = #sctmFwDt#,
+		       TDTM_FW_DT                 = #tdtmFwDt#,
+		       FRTM_FW_DT                 = #frtmFwDt#,
+		       CURC                       = 'USD',
+		       FATCA_PRSNL_LA_CAAMT     = #fatcaPrsnlLaCaamt#,
+		       FATCA_PRSNL_HAMT_CAAMT   = #fatcaPrsnlHamtCaamt#,
+		       FATCA_COPR_LA_CAAMT      = #fatcaCoprLaCaamt#,
+		       FATCA_COPR_HAMT_CAAMT    = #fatcaCoprHamtCaamt#,
+		       FATCA_OD_DPO_ACNT_CAAMT  = #fatcaOdDpoAcntCaamt#,
+		       FATCA_OD_PEN_ACNT_CAAMT  = #fatcaOdPenAcntCaamt#,
+		       NEW_DPO_ACNT_CAAMT = #newDpoAcntCaamt#,
+		       TAXTN_NACD                 = 'US',
+		       FST_REG_DTL_DTTI           = systimestamp,
+		       FST_RGPR_ENOB              = #enob#,
+		       FST_REG_BRNO               = #brno#,
+		       LT_CH_DTL_DTTI             = systimestamp,
+		       LT_CHPR_ENOB               = #enob#,
+		       LT_CH_BRNO                 = #brno#
+		WHERE  CRYM                       = #crym#
+	</update>
+	
+	
+	<insert id="insertCommonCodeByBasicInfo" parameterClass="map">	
+	/** acipready.insertCommonCodeByBasicInfo */	
+		INSERT INTO TB_FTCC_CDCRI 
+		(SELECT 
+		  #crym#, CD_IDTF_ID, CD_IDTF_KNM, USE_YN, 
+		  systimestamp, #enob#, #brno#,
+		  systimestamp, #enob#, #brno#
+		FROM TB_FTCC_CDCRI
+		WHERE crym = (select max(crym) from tb_ftcc_cdcri)
+		and cd_idtf_id != 'ENV_SET')
+	</insert>
+		
+	<insert id="insertCommonCodeDetailByBasicInfo" parameterClass="map">
+	/** acipready.insertCommonCodeDetailByBasicInfo */		
+		INSERT INTO TB_FTCD_CDDTL 
+		(SELECT 
+		  #crym#, CD_IDTF_ID, VLD_VAL, 
+   		  VLD_VAL_NM, UPPER_VLD_VAL, USE_YN,
+		  systimestamp, #enob#, #brno#,
+		  systimestamp, #enob#, #brno#
+		FROM TB_FTCD_CDDTL
+		WHERE crym = (select max(crym) from tb_ftcd_cddtl)
+		and cd_idtf_id != 'ENV_SET')
+	</insert>
+	
+	
+	
+	<select id="selectSamePersonList_OLD" resultClass="dbmap" parameterClass="map">
+		SELECT 
+		   a.SMPSN_ID, a.CSNO, 
+		   b.cust_nm, 
+		   a.rgdt,  
+		   b.rnno,
+		   to_char(b.FST_REG_DTL_DTTI,'yyyymmdd') reg_dtl,
+		   to_char(b.FST_REG_DTL_DTTI,'yyyy-mm-dd') reg_dtl_fmt,
+		   a.FST_REG_DTL_DTTI, a.FST_RGPR_ENOB, a.FST_REG_BRNO, 
+		   b.LT_CH_DTL_DTTI, b.LT_CHPR_ENOB, b.LT_CH_BRNO
+		FROM tb_ftcm_SMPSNDCRMRSLT a,
+			(select * from tb_ftcm_custbas where crym=#crym# and cust_seq='0000') b			
+		where a.csno = b.csno
+		<isNotEmpty property="csno">
+		and smpsn_id = (select smpsn_id from tb_ftcm_smpsndcrmrslt where csno=#csno#)
+		</isNotEmpty>
+	</select>
+	
+	<select id="selectSamePersonList" resultClass="dbmap" parameterClass="map">
+	/** acipready.selectSamePersonList */
+		SELECT 
+		   a.SMPSN_ID, a.CSNO, 
+		   b.cust_nm, 
+		   a.rgdt,  
+		   b.rnno,
+		   to_char(b.FST_REG_DTL_DTTI,'yyyymmdd') reg_dtl,
+		   to_char(b.FST_REG_DTL_DTTI,'yyyy-mm-dd') reg_dtl_fmt,
+		   a.FST_REG_DTL_DTTI, a.FST_RGPR_ENOB, a.FST_REG_BRNO, 
+		   b.LT_CH_DTL_DTTI, b.LT_CHPR_ENOB, b.LT_CH_BRNO
+		FROM tb_ftcm_SMPSNDCRMRSLT a,
+			(select *
+		    from TB_FTCM_CUSTBAS
+		    where crym = (select max(crym) from TB_FTCM_ACIPCRI)) b 		
+		where a.csno = b.csno
+		<isNotEmpty property="csno">
+		and smpsn_id in (select smpsn_id from tb_ftcm_smpsndcrmrslt where csno=#csno#)
+		</isNotEmpty>
+		order by a.smpsn_id, a.csno
+	</select>
+	
+	<select id="selectExistSmpsnId" resultClass="string" parameterClass="map">
+	/** acipready.selectExistSmpsnId */
+	<![CDATA[
+		SELECT 
+		   min(SMPSN_ID) smpsn_id
+		FROM tb_ftcm_SMPSNDCRMRSLT
+		where csno in ($csnoList$) 
+	]]>		
+	</select>
+	
+	<select id="selectSmpsnSeq_old" resultClass="string" parameterClass="map">
+		SELECT 
+		   SMPSN_SEQ.nextval
+		FROM dual
+	</select>
+	
+	<select id="selectSmpsnSeq" resultClass="string" parameterClass="map">
+	/** acipready.selectSmpsnSeq */
+		SELECT 
+		   nvl(max(smpsn_id),1000000000000)+1 smpsn_seq
+		FROM tb_ftcm_smpsndcrmrslt		
+	</select>
+	
+	<insert id="insertSamePerson" parameterClass="map">		
+	/** acipready.insertSamePerson */
+		INSERT INTO tb_ftcm_SMPSNDCRMRSLT (
+		   SMPSN_ID, CSNO, RGDT,  
+		   FST_REG_DTL_DTTI, FST_RGPR_ENOB, FST_REG_BRNO, 
+		   LT_CH_DTL_DTTI, LT_CHPR_ENOB, LT_CH_BRNO) 
+		VALUES ( #smpsnId#, #csno#, to_char(sysdate,'yyyymmdd'),  
+			   systimestamp, #enob#, #brno#,
+		       systimestamp, #enob#, #brno#)
+	</insert>
+	
+	
+	<update id="updateSamePerson_old" parameterClass="map">		
+		update tb_ftcm_SMPSNDCRMRSLT
+		set rsg_dt = to_char(sysdate,'yyyymmdd'),
+	       LT_CH_DTL_DTTI             = systimestamp,
+	       LT_CHPR_ENOB               = #enob#,
+	       LT_CH_BRNO                 = #brno#
+		where smpsn_id = #smpsnId#
+		and csno = #csno#
+	</update>
+	
+	<delete id="deleteSamePerson" parameterClass="map">		
+	/** acipready.deleteSamePerson */
+		delete from tb_ftcm_SMPSNDCRMRSLT
+		where smpsn_id = #smpsnId#
+		and csno = #csno#
+	</delete>
+	
+	<insert id="insertSamePersonHistory" parameterClass="map">	
+	/** acipready.insertSamePersonHistory */	
+		INSERT INTO TB_FTCI_SMPSNDCRMRSLT (
+		   SMPSN_ID, CSNO, REG_DTTI, 
+		   RGDT, RSG_YN, 
+		   FST_REG_DTL_DTTI, FST_RGPR_ENOB, FST_REG_BRNO, 
+		   LT_CH_DTL_DTTI, LT_CHPR_ENOB, LT_CH_BRNO) 
+		VALUES ( #smpsnId#, #csno#, sysdate,
+		    to_char(sysdate,'yyyymmdd'), #rsgYn#, 
+		   systimestamp, #enob#, #brno#,
+		   systimestamp, #enob#, #brno#)
+	</insert>
+		
+	
+	
+</sqlMap>

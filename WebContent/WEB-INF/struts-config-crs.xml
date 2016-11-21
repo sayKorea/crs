@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="euc-kr"?>
+<!DOCTYPE struts-config PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 1.2//EN" "http://struts.apache.org/dtds/struts-config_1_2.dtd">
+<struts-config>
+	<data-sources />
+    <form-beans type="org.apache.struts.action.ActionFormBean" />
+    <global-exceptions />
+    <global-forwards type="org.apache.struts.action.ActionForward" />
+
+    <action-mappings type="org.apache.struts.action.ActionMapping">	
+ 		
+ 		<!-- CRS Sample 페이지   -->			
+		<action path="/sample" type="crs.sample.CrsSampleAction" scope="request" parameter="method" validate="false"/>			
+    
+    	<!-- CRS Template 페이지   -->			
+		<action path="/template" type="crs.template.CrsTemplateAction" scope="request" parameter="method" validate="false"/>			
+    
+    </action-mappings>
+</struts-config>

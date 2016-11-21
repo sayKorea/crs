@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="euc-kr"?>
+<!DOCTYPE struts-config PUBLIC
+          "-//Apache Software Foundation//DTD Struts Configuration 1.2//EN"
+          "http://struts.apache.org/dtds/struts-config_1_2.dtd">
+<struts-config>
+	<data-sources />
+    <form-beans type="org.apache.struts.action.ActionFormBean" />
+    <global-exceptions />
+    <global-forwards type="org.apache.struts.action.ActionForward" />
+
+    <action-mappings type="org.apache.struts.action.ActionMapping">	
+ 		
+		<!-- 로그인  -->			
+		<action path="/login" type="fatca.system.action.FTCLoginAction" scope="request" parameter="method" validate="false">
+			<forward name="login" 			path="/ftc_login.jsp" />			
+			<forward name="main" 			path="/ftc_main.jsp" />
+			<forward name="loginFail" 		path="/error/ftc_login_fail.jsp" />
+			<forward name="loginno" 		path="/error/ftc_login_no.jsp" />
+		</action>
+		
+		<!-- 코드 팝업  -->
+		<action path="/code" type="fatca.system.action.FTCCodeAction" scope="request" parameter="method" validate="false">
+			<forward name="list" 			path="/system/ftc_list_code.jsp" />	
+			<forward name="searchpopcust" 	path="/system/ftc_pop_search_cust.jsp" />	
+			<forward name="searchpopcopr" 	path="/system/ftc_pop_search_copr.jsp" />	
+			<forward name="searchpopsls" 	path="/system/ftc_pop_search_sls.jsp" />	
+			<forward name="searchpopemp" 	path="/system/ftc_pop_search_emp.jsp" />	
+			<forward name="modify"			path="/system/ftc_modify_code.jsp" />
+			<forward name="view"			path="/system/ftc_view_code.jsp" />	
+			<forward name="execquery"		path="/ftc_excel_quer.jsp" />
+			<forward name="exceldown"		path="/ftc_excel_down.jsp" />
+			<forward name="excelupload"		path="/system/ftc_pop_excel_upload.jsp" />
+			<forward name="chkcust"			path="/ftc_chk_cust.jsp" />
+		</action>
+		
+		<!-- 권한  -->			
+		<action path="/auth" type="fatca.system.action.FTCAuthAction" scope="request" parameter="method" validate="false">
+			<forward name="list" 			path="/system/ftc_user_auth_modify.jsp" />			
+			<forward name="listEmp" 		path="/system/ftc_pop_noauth_emp.jsp" />
+			<forward name="listMenu" 		path="/system/ftc_menu_auth_modify.jsp" />	
+			<forward name="exceldown"		path="/ftc_excel_down.jsp" />	
+		</action>
+				
+    </action-mappings>
+    
+</struts-config>

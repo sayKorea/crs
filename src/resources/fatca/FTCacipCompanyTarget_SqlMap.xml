@@ -1,0 +1,471 @@
+<?xml version="1.0" encoding="EUC-KR"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="aciptarget">
+	<select id="selectCompanyBasListYn" resultClass="string" parameterClass="map">		
+	/** aciptarget.selectCompanyBasListYn */		 
+		SELECT case when count(*) > 0 then MAX(PRST_DT)
+		            else 'N' 
+		       end reg_Yn
+		FROM TB_CUAH_FATCACORP
+		WHERE csno = #csno#
+<!-- 		AND cust_seq = #custSeq# -->
+		AND prst_dt > (
+		                    SELECT fatca_acip_sdt
+		                    FROM TB_FTCM_ACIPCRI
+		                    WHERE crym = #crym# )
+		AND reg_can_dvcd = '1'
+		AND FATCA_PRST_DVCD = '01'
+	</select>
+	
+
+	<!-- 법인고객 대상자조회 -->
+	<select id="selectCompanyList" resultClass="dbmap" parameterClass="map">
+	/** aciptarget.selectCompanyList */
+		SELECT * FROM (
+			SELECT ROWNUM_.* , ROWNUM AS RNUM FROM 
+			(	
+				SELECT a.sls_brno, /* 영업점코드 */
+				       (SELECT BRC_NM FROM TB_COAM_BRBAS WHERE clo_brc_yn='N' and brno = a.sls_brno) as sls_brnm, /* 영업점명 */
+				       a.crym, /* 기준일자 */
+				       a.csno, /* 고객번호 */
+				       a.cust_seq,  /* 고객일련번호 */
+				       (SELECT cust_nm FROM TB_FTCM_CUSTBAS WHERE csno = a.csno AND crym = a.crym AND cust_seq = a.cust_seq) AS cust_nm,  /* 고객명 */
+				       (SELECT rnno FROM TB_FTCM_CUSTBAS WHERE csno = a.csno AND crym = a.crym AND cust_seq = a.cust_seq) AS rnno,  /* 실명번호 */
+				       a.fatca_amt_sct_clacd,  /* 금액구간분류코드 */
+				       (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '114' and use_yn = 'Y' and vld_val = a.fatca_amt_sct_clacd and crym = a.crym) as fatca_amt_sct_clacd_nm,  /* 금액구간분류명 */
+				       a.fatca_adup_acnt_cnt as acnt_cnt,  /* 합산계좌수 */
+				       a.acnt_smamt as wc_cnvt_balamt,  /* 계좌합계금액 */
+				       a.acnt_sumt_usd_cnvt_amt as usd_cnvt_balamt, /* 계좌합계미화환산금액 */
+				       a.fatca_acip_cgp_enob,  /* 실사담당자 */
+				       (SELECT user_nm FROM TB_COAM_HRUSERBAS where enob = a.fatca_acip_cgp_enob ) as fatca_acip_cgp_ennm, /* 실사담당자명 */
+				       a.fatca_acip_rppr_enob, /* 고객관계관리자 */
+				       (SELECT user_nm FROM TB_COAM_HRUSERBAS where enob = a.fatca_acip_rppr_enob ) as fatca_acip_rppr_ennm, /* 고객관계관리자명 */
+				       count(*) over() as total_cnt
+				FROM TB_FTCM_ACIPRSLT a
+                WHERE a.crym = #crym#
+				and a.sls_brno = #slsBrno# 
+				<isNotEmpty property="fatcaAcipRpprEnob">
+				AND a.fatca_acip_rppr_enob = #fatcaAcipRpprEnob#
+				</isNotEmpty>
+				<isNotEmpty property="fatcaAcipCgpEnob">
+				AND a.fatca_acip_cgp_enob = #fatcaAcipCgpEnob#
+				</isNotEmpty>
+				<isNotEmpty property="fatcaCustRelMngrEnob">
+				AND a.fatca_cust_rel_mngr_enob = #fatcaCustRelMngrEnob#
+				</isNotEmpty>
+				<isNotEmpty property="fatcaAmtSctClacd">
+				AND a.fatca_amt_sct_clacd = #fatcaAmtSctClacd#
+				</isNotEmpty>
+				<isNotEmpty property="csno">
+				AND a.csno = #csno#
+				</isNotEmpty>	
+				<isNotEmpty property="custSeq">
+				AND a.cust_seq = #custSeq#
+				</isNotEmpty>
+				AND a.fatca_tpcd = '02'
+				ORDER BY a.crym, sls_brno, a.csno			
+			) ROWNUM_
+			WHERE   #pagingEnd# >= ROWNUM  
+		) WHERE RNUM > #pagingStart#
+	</select>
+	
+	
+	<!-- 법인고객 상세조회 - 기본정보([FATCA 개인확인서제출내역]에 "정상 제출"된 FATCA 확인서가 없을 경우) -->
+	<select id="selectCompBasList" resultClass="dbmap" parameterClass="map">		
+	/** aciptarget.selectCompBasList */
+		SELECT b.csno, /* 고객번호 */
+			   (select CUST_NM from tb_ftcm_custbas where crym = (select max(crym) from TB_FTCM_ACIPCRI) and csno=b.csno ) as cust_nm, /* 고객명 */
+			   a.cust_seq, /* 고객일련번호 */
+			   a.fatca_cust_dvcd, /* 고객구분코드(FATCA고객유형) */
+			   a.fatca_amt_sct_clacd,  /* 금액구간분류코드 */
+		       (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '114' and use_yn = 'Y' and vld_val = a.fatca_amt_sct_clacd and crym = a.crym) as fatca_amt_sct_clacd_nm,  /* 금액구간분류명 */       
+			   (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '115' and use_yn = 'Y' and vld_val = a.fatca_cust_dvcd and crym = a.crym) as fatca_cust_dvcd_nm, /* FATCA고객유형명 */
+			   b.ids_clacd,  /* 표준산업분류코드 */
+			   (select ids_clacd_nm from tb_coac_stdidsclacd where ids_clacd = b.ids_clacd) as ids_clacd_nm,  /* 분류명 */
+			   (select usr_ad
+				from (
+				select ' (' || a.PSNO || '-' || a.PSNO_SEQ || ') ' || a.ATMT_ADDR1 || a.ATMT_ADDR2 AS USR_AD
+				FROM TB_CUAD_ADDR a   
+				WHERE csno = #csno#
+				and cust_addr_tpcd in ('01','02')
+				order by cust_addr_tpcd desc)
+				where usr_ad is not null
+				and rownum = 1) as addr ,  /* 주소 */
+			   (select ddd || '-' || tlxcno || '-' || tlndno from tb_cuad_tel where csno = a.csno and cust_tel_tpcd ='01') as phone,  /* 연락처 */
+			   a.sls_brno || ' / ' || 
+				       (SELECT BRC_NM FROM TB_COAM_BRBAS WHERE clo_brc_yn='N' and brno = a.sls_brno) as br,  /* 영업점코드/영업점명 */
+			   b.cono || ' / ' || b.bzno as bizno ,  /* 법인/사업자등록번호 */       
+		       to_char(a.acnt_smamt, 'FM999,999,999,999,999,990') as acnt_smamt, /* 계좌합계금액 */ 
+			   to_char(a.acnt_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as acnt_sumt_usd_cnvt_amt, /* 계좌합계미화환산금액 */ 
+			   to_char(a.dpo_smamt, 'FM999,999,999,999,999,990') as dpo_smamt, /* 예금합계금액 */
+			   to_char(a.dpo_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as dpo_sumt_usd_cnvt_amt,/* 예금합계미화환산금액 */
+			   to_char(a.pen_smamt, 'FM999,999,999,999,999,990') as pen_smamt, /* 연금합계금액 */
+			   to_char(a.pen_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as pen_sumt_usd_cnvt_amt, /* 연금합계미화환산금액 */
+			   to_char(a.trst_smamt, 'FM999,999,999,999,999,990') as trst_smamt, /* 수탁합계금액 */
+			   to_char(a.trst_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as trst_sumt_usd_cnvt_amt, /* 수탁합계미화환산금액 */
+			   to_char(a.dbtr_smamt, 'FM999,999,999,999,999,990') as dbtr_smamt, /* 채권합계금액 */
+			   to_char(a.dbtr_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as dbtr_sumt_usd_cnvt_amt, /* 채권합계미화환산금액 */
+		       A.fatca_acip_cgp_enob, /* 실사담당자 */
+		       (SELECT user_nm FROM TB_COAM_HRUSERBAS where enob = A.fatca_acip_cgp_enob ) as fatca_acip_cgp_ennm, /* 실사담당자명 */
+		       A.fatca_acip_rppr_enob, /* 실사책임자 */
+		       (SELECT user_nm FROM TB_COAM_HRUSERBAS where enob = A.fatca_acip_rppr_enob ) as fatca_acip_rppr_ennm, /* 실사책임자명 */
+		      a.fatca_cz_acip_rscd, /* FATCA전산실사결과코드 */	  
+		      (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '116' and use_yn = 'Y' and vld_val = a.fatca_cz_acip_rscd and crym = a.crym) as fatca_cz_acip_rscd_nm, /* 고객관계관리자명 */
+			  a.fatca_cfrrpt_acip_rscd,	 /* FATCA확인서 결과코드 */	   
+		      (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '119' and use_yn = 'Y' and vld_val = a.fatca_cfrrpt_acip_rscd and crym = a.crym) as fatca_cfrrpt_acip_rscd_nm /* FATCA확인서 결과코드명 */	  
+		FROM TB_FTCM_ACIPRSLT a,
+		    TB_FTCM_CUSTCOPR b
+		WHERE a.crym = b.crym(+)
+		AND a.csno = b.csno(+)
+		AND a.cust_seq = b.cust_seq(+)
+		AND a.crym = #crym#
+		AND a.csno = #csno#
+		AND a.cust_seq = #custSeq#
+		AND a.fatca_tpcd = '02'
+	</select>
+	
+	
+	<!-- 법인고객 상세조회 - 기본정보([FATCA 개인확인서제출내역]에 "정상 제출"된 FATCA 확인서가 있을 경우) -->
+	<select id="selectCompBasYList" resultClass="dbmap" parameterClass="map">		
+	/** aciptarget.selectCompBasYList */
+		SELECT b.csno,
+			   b.bzman_nm as cust_nm,
+			   a.cust_seq,
+			   a.fatca_amt_sct_clacd,
+               (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '114' and use_yn = 'Y' and vld_val =  a.fatca_amt_sct_clacd and crym = a.crym) as fatca_amt_sct_clacd_nm,      
+			   a.fatca_cust_dvcd,
+			   (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '115' and use_yn = 'Y' and vld_val = a.fatca_cust_dvcd and crym = a.crym) as fatca_cust_dvcd_nm,
+			   b.ids_clacd, 
+			   (select ids_clacd_nm from tb_coac_stdidsclacd where ids_clacd = b.ids_clacd) as ids_clacd_nm,
+			   (select atmt_addr from (select csno, cust_seq, atmt_addr from tb_cuad_addr where csno = #csno# and cust_addr_tpcd in ('A61','A51') and atmt_addr is not null order by cust_addr_tpcd desc) where cust_seq=a.cust_seq and rownum=1) as addr , 
+			   (select ddd || '-' || tlxcno || '-' || tlndno from tb_cuad_tel where csno = a.csno and cust_tel_tpcd ='B61') as phone,  
+			   b.bzno,
+		       to_char(a.acnt_smamt, 'FM999,999,999,999,999,990') as acnt_smamt,
+			   to_char(a.acnt_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as acnt_sumt_usd_cnvt_amt,
+			   to_char(a.dpo_smamt, 'FM999,999,999,999,999,990') as dpo_smamt,
+			   to_char(a.dpo_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as dpo_sumt_usd_cnvt_amt,
+			   to_char(a.pen_smamt, 'FM999,999,999,999,999,990') as pen_smamt,
+			   to_char(a.pen_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as pen_sumt_usd_cnvt_amt,
+			   to_char(a.trst_smamt, 'FM999,999,999,999,999,990') as trst_smamt,
+			   to_char(a.trst_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as trst_sumt_usd_cnvt_amt,
+			   to_char(a.dbtr_smamt, 'FM999,999,999,999,999,990') as dbtr_smamt,
+			   to_char(a.dbtr_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as dbtr_sumt_usd_cnvt_amt,
+	           A.fatca_acip_cgp_enob,
+	           (SELECT user_nm FROM TB_COAM_HRUSERBAS where enob = A.fatca_acip_cgp_enob ) as fatca_acip_cgp_ennm,
+	           A.fatca_acip_rppr_enob,
+	           (SELECT user_nm FROM TB_COAM_HRUSERBAS where enob = A.fatca_acip_rppr_enob ) as fatca_acip_rppr_ennm,
+	          a.fatca_cz_acip_rscd,
+	          (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '116' and use_yn = 'Y' and vld_val = a.fatca_cz_acip_rscd and crym = a.crym) as fatca_cz_acip_rscd_nm,
+			  a.fatca_cfrrpt_acip_rscd,			  
+	          (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '119' and use_yn = 'Y' and vld_val = a.fatca_cfrrpt_acip_rscd and crym = a.crym) as fatca_cfrrpt_acip_rscd_nm
+		FROM TB_FTCM_ACIPRSLT a,
+		    TB_CUAD_ENPCO b
+		WHERE a.csno = b.csno
+		AND a.cust_seq = b.cust_seq
+		AND a.crym = #crym#
+		AND a.csno = #csno#
+		AND a.cust_seq = #custSeq#
+		AND a.fatca_tpcd = '02'
+	</select>
+	
+	
+    <!-- 법인고객 상세조회 - 탭(실사이력) -->
+	<select id="selectCompHistList" resultClass="dbmap" parameterClass="map">
+	/** aciptarget.selectCompHistList */			
+		SELECT a.crym,  /* 기준일자 */
+			  substr(a.crym, 0, 4) || '-' || substr(a.crym, 5) as crym_fmt, /* 기준일자format */
+			  a.fatca_acip_compt_dt, /* 실사 완료일자 */
+			  to_char(to_date(decode(a.fatca_acip_compt_dt, '99991231', '', a.fatca_acip_compt_dt),'yyyyMMdd'), 'yyyy-MM-dd') as compt_dt_fmt, /* 실사 완료일자format */
+			  a.fatca_amt_sct_clacd, /* 금액구간분류코드 */
+			  ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '114' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_amt_sct_clacd ) as fatca_amt_sct_clacd_nm, /* 금액구간분류코드명 */
+			  a.fatca_cust_dvcd,  /* 고객구분코드(FATCA고객유형) */
+			  ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '115' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_cust_dvcd ) as fatca_cust_dvcd_nm, /* FATCA고객유형명 */
+			  a.fatca_cz_acip_rscd, /* 전산실사 결과코드 */
+			  ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '116' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_cz_acip_rscd ) as fatca_cz_acip_rscd_nm,
+			  a.fatca_doc_acip_rscd, /* 문서실사 결과코드 */
+			  ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '117' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_doc_acip_rscd ) as fatca_doc_acip_rscd_nm,
+			  a.fatca_iqr_rscd, /* 질의 결과코드 */
+			  ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '118' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_iqr_rscd ) as fatca_iqr_rscd_nm, /* 질의 결과코드명 */
+			  a.fatca_cfrrpt_acip_rscd, /* FATCA확인서 결과코드 */
+			  ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '119' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_cfrrpt_acip_rscd ) as fatca_cfrrpt_acip_rscd_nm, /* FATCA확인서 결과코드명 */
+			  a.fatca_rept_trget_dvcd, /* 보고대상 구분코드 */
+			  ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '120' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_rept_trget_dvcd ) as fatca_rept_trget_dvcd_nm /* 보고대상 구분코드명 */
+		FROM TB_FTCM_ACIPRSLT a
+		WHERE a.crym = #crym#
+		AND a.csno = #csno#
+		AND a.cust_seq = #custSeq#
+		AND a.fatca_tpcd = '02'
+		ORDER BY a.csno desc, a.fatca_acip_compt_dt
+	</select>	
+	
+    <!-- 법인고객 상세조회 - 탭(FATCA 확인서 제출이력) -->
+	<select id="selectCompPrstHistList" resultClass="dbmap" parameterClass="map">
+	/** aciptarget.selectCompPrstHistList */
+	SELECT *
+	FROM (
+		SELECT #crym# as crym, /* 기준일자 */
+			   decode(TRIM(#crym#), '', '', (substr(#crym#, 0, 4) || '-' || substr(#crym#, 5))) as crym_fmt, /* 기준일자format */
+		       a.prst_dt, 				/* 제출일자 */
+		       to_char(to_date(a.prst_dt,'yyyyMMdd'), 'yyyy-MM-dd') as prst_dt_fmt, /* 제출일자 format */
+			   a.fatca_cfrrpt_seq, 		/* fatca확인서일련번호 */
+       		   a.fatca_cust_tpcd, 	/* 법인 사용 안함 */	
+       		   a.fatca_copr_tpcd,	/* fatca고객유형코드 */
+		       ( select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '108' and use_yn = 'Y' and crym = #crym# and vld_val = a.fatca_copr_tpcd ) as fatca_corp_tpcd_nm, /* fatca법인유형코드명 */
+		       decode(a.fatca_txpayr_no,a.fatca_txpayr_no,'0',substr(a.fatca_txpayr_no,0,7)||'******') as fatca_txpayr_no, /* 납세자번호 */
+		       decode(a.bzno,'',a.bzno,substr(a.bzno,0,6)||'-'||substr(a.bzno,7,1)||'******') as bzno, /* 사업자번호 */
+		       a.lop_nacd,/* 소재지국가 */
+		       a.fatca_copr_hg_addr, /* fatca 한글주소 */
+		       a.fatca_cust_tlno /* fatca 전화번호 */
+		FROM TB_CUAH_FATCACORP a
+		WHERE a.csno = #csno# 
+		AND a.cust_seq = #custSeq# 
+		AND reg_can_dvcd = '1'
+		ORDER BY a.prst_dt desc, a.fatca_cfrrpt_seq desc 
+	    ) a
+	WHERE rownum <![CDATA[<]]> 5
+	</select>	
+	
+	<!-- 법인고객 상세조회 - 탭(합산이력) -->
+	<select id="selectCompAdupHistList" resultClass="dbmap" parameterClass="map">
+	/** aciptarget.selectCompAdupHistList */
+		SELECT crym, /* 기준일자 */
+		       decode(TRIM(crym), '', '', ( substr(crym, 0, 4) || '-' || substr(crym, 5))) as crym_fmt, /* 기준일자 format */
+		       csno, /* 고객번호 */
+		       cust_seq, /* 고객일련번호 */    
+		       (select  TO_CHAR(LAST_DAY(TO_DATE(#crym#, 'YYYYMM')), 'YYYYMMDD') from dual) as fatca_adupdt,
+		       decode((select  TO_CHAR(LAST_DAY(TO_DATE(#crym#, 'YYYYMM')), 'YYYYMMDD') from dual), '', '', 
+		       		  (substr((select  TO_CHAR(LAST_DAY(TO_DATE(#crym#, 'YYYYMM')), 'YYYYMMDD') from dual), 0, 4) || '-' || 
+		       		   substr((select  TO_CHAR(LAST_DAY(TO_DATE(#crym#, 'YYYYMM')), 'YYYYMMDD') from dual), 5, 2) || '-' || 
+		       		   substr((select  TO_CHAR(LAST_DAY(TO_DATE(#crym#, 'YYYYMM')), 'YYYYMMDD') from dual), 7))) as fatca_adupdt_fmt,  /* 합산일자 format */  
+			   to_char(acnt_smamt, 'FM999,999,999,999,999,990') as acnt_smamt, /* 계좌합계금액 */
+			   to_char(acnt_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as acnt_sumt_usd_cnvt_amt, /* 계좌합계미화환산금액 */	  
+			   to_char(dpo_smamt, 'FM999,999,999,999,999,990') as dpo_smamt, /* 예금합계금액 */
+			   to_char(dpo_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as dpo_sumt_usd_cnvt_amt, /* 예금합계미화환산금액 */
+			   to_char(pen_smamt, 'FM999,999,999,999,999,990') as pen_smamt, /* 연금합계금액 */
+			   to_char(pen_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as pen_sumt_usd_cnvt_amt, /* 연금합계미화환산금액 */
+			   to_char(trst_smamt, 'FM999,999,999,999,999,990') as trst_smamt, /* 수탁합계금액 */
+			   to_char(trst_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as trst_sumt_usd_cnvt_amt, /* 수탁합계미화환산금액 */
+			   to_char(dbtr_smamt, 'FM999,999,999,999,999,990') as dbtr_smamt, /* 채권합계금액 */
+			   to_char(dbtr_sumt_usd_cnvt_amt, 'FM999,999,999,999,990.90') as dbtr_sumt_usd_cnvt_amt /* 채권합계미화환산금액 */
+		FROM TB_FTCM_ACIPRSLT
+		WHERE csno = #csno#
+		AND cust_seq = #custSeq# 
+		AND crym = #crym#
+		AND fatca_tpcd = '02'
+		ORDER BY crym desc
+	</select>	
+	
+	<!-- 법인고객 상세조회 - 탭(보고이력) -->
+	<select id="selectCompReptHistList" resultClass="dbmap" parameterClass="map">
+	/** aciptarget.selectCompReptHistList */	
+		SELECT a.crym, /* 기준일자 */
+		       decode(TRIM(a.crym), '', '', ( substr(a.crym, 0, 4) || '-' || substr(a.crym, 5))) as crym_fmt, /* 기준일자 format */
+		       a.csno, /* 고객번호 */
+		       a.cust_seq, /* 고객일련번호 */   
+		       (SELECT fatca_rept_compt_dt FROM TB_FTCM_ACIPCRI WHERE crym = #crym#) as fatca_rept_dt, /* 보고일자 */
+		       decode((SELECT fatca_rept_compt_dt FROM TB_FTCM_ACIPCRI WHERE crym = #crym#), '', '', 
+		       		  (substr((SELECT fatca_rept_compt_dt FROM TB_FTCM_ACIPCRI WHERE crym = #crym#), 0, 4) || '-' || 
+		       		   substr((SELECT fatca_rept_compt_dt FROM TB_FTCM_ACIPCRI WHERE crym = #crym#), 5, 2) || '-' || 
+		       		   substr((SELECT fatca_rept_compt_dt FROM TB_FTCM_ACIPCRI WHERE crym = #crym#), 7))) as rept_dt_fmt, /* 보고일자 format */
+		       a.fatca_rept_trget_dvcd, /* 보고대상 구분코드 */
+		       (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '120' and use_yn = 'Y' and crym = a.crym and vld_val = a.fatca_rept_trget_dvcd ) as fatca_rept_trget_dvcd_nm, /* 보고대상 구분코드명 */
+		       b.fatca_cust_dvcd,  /* 고객구분코드(FATCA고객유형) */
+		       (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '115' and use_yn = 'Y' and crym = b.crym and vld_val = b.fatca_cust_dvcd ) as fatca_cust_dvcd_nm /* 고객구분코드(FATCA고객유형명) */
+		FROM tb_ftcm_repttrgetcoprbas a,
+			TB_FTCM_ACIPRSLT b
+		WHERE a.csno = #csno#
+		AND a.cust_seq = #custSeq# 
+		AND a.crym = #crym#
+		AND a.crym = b.crym
+	 	AND a.csno = b.csno
+	 	AND a.cust_seq = b.cust_seq
+		ORDER BY crym desc
+	</select>	
+	
+	
+	
+	<!-- 법인고객 상세조회 - 탭(합산이력 상세) -->
+	<select id="selectCompAdupHistDetail_OLD" resultClass="dbmap" parameterClass="map">
+	/** aciptarget.selectCompAdupHistDetail */	
+		SELECT a.crym, /* 기준일자 */
+		       decode(a.crym, ' ', '', ( substr(a.crym, 0, 4) || '-' || substr(a.crym, 5))) as crym_fmt, /* 기준일자 format */
+			   (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '801' and use_yn = 'Y' and crym = #crym# and vld_val = b.fatca_pd_clacd ) as fatca_pd_clacd_nm, /* 상품구분코드명 */
+			   b.pd_knm, /* 상품명 */
+		       substr(a.acno,0,length(a.acno)-4)||'****' as acno, /* 계좌번호 */
+		       a.curc, /* 통화코드 */
+		       to_char(a.acnt_balamt, 'FM999,999,999,999,999,990') as acnt_balamt, /* 계좌합계 */
+		       to_char(a.wc_cnvt_balamt, 'FM999,999,999,999,999,990') as wc_cnvt_balamt, /* 원화환산금액 */
+			   to_char(a.usd_cnvt_balamt, 'FM999,999,999,999,990.90') as usd_cnvt_balamt /* 미화환산금액 */
+		FROM TB_FTCM_ACNTBAS a,
+		     TB_FTCM_TRGETPDBAS b 
+		WHERE a.crym = b.crym
+		AND a.pd_cd = b.pd_cd
+  		AND a.fatca_pd_clacd != '99'
+		AND a.crym = #crym#
+		AND a.csno = #csno#
+		AND a.cust_seq = #custSeq# 
+		UNION ALL
+		SELECT a.crym, /* 기준일자 */
+		       decode(a.crym, ' ', '', ( substr(a.crym, 0, 4) || '-' || substr(a.crym, 5))) as crym_fmt, /* 기준일자 format */
+			   (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '801' and use_yn = 'Y' and crym = #crym# and vld_val = b.fatca_pd_clacd ) as fatca_pd_clacd_nm, /* 상품구분코드명 */
+			   b.pd_knm, /* 상품명 */
+		       substr(a.acno,0,length(a.acno)-4)||'****' as acno, /* 계좌번호 */
+		       a.curc, /* 통화코드 */
+		       to_char(a.acnt_balamt, 'FM999,999,999,999,999,990') as acnt_balamt, /* 계좌합계 */
+		       to_char(a.wc_cnvt_balamt, 'FM999,999,999,999,999,990') as wc_cnvt_balamt, /* 원화환산금액 */
+			   to_char(a.usd_cnvt_balamt, 'FM999,999,999,999,990.90') as usd_cnvt_balamt /* 미화환산금액 */
+		FROM TB_FTCM_ACNTBAS a,
+		     TB_FTCM_TRGETPDBAS b,
+		     TB_FTCM_ACIPRSLT c
+		WHERE a.crym = b.crym
+		AND a.pd_cd = b.pd_cd
+  		AND a.fatca_pd_clacd != '99'
+		AND a.crym = #crym#
+		AND a.cust_seq = #custSeq#
+		AND a.csno = c.csno
+		AND a.csno != #csno#
+		AND c.smpsn_id = (select decode(smpsn_id,'~','0',smpsn_id) from TB_FTCM_ACIPRSLT where crym=#crym# and csno=#csno#)
+	</select>	
+	
+	
+	<!-- 법인고객 상세조회 - 탭(합산이력 상세) -->
+	<select id="selectCompAdupHistDetailBySelf" resultClass="dbmap" parameterClass="map">
+	/** aciptarget.selectCompAdupHistDetailBySelf */	
+		SELECT a.crym, a.csno,
+		       decode(a.crym, ' ', '', ( substr(a.crym, 0, 4) || '-' || substr(a.crym, 5))) as crym_fmt, /* 기준일자 format */
+			   (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '801' and use_yn = 'Y' and crym = #crym# and vld_val = b.fatca_pd_clacd ) as fatca_pd_clacd_nm, /* 상품구분코드명 */
+			   b.pd_knm, /* 상품명 */
+		       substr(a.acno,0,length(a.acno)-4)||'****' as acno, /* 계좌번호 */
+		       a.curc, /* 통화코드 */
+		       to_char(a.acnt_balamt, 'FM999,999,999,999,999,990') as acnt_balamt, /* 계좌합계 */
+		       to_char(a.wc_cnvt_balamt, 'FM999,999,999,999,999,990') as wc_cnvt_balamt, /* 원화환산금액 */
+			   to_char(a.usd_cnvt_balamt, 'FM999,999,999,999,990.90') as usd_cnvt_balamt /* 미화환산금액 */
+		FROM TB_FTCM_ACNTBAS a,
+		     TB_FTCM_TRGETPDBAS b 
+		WHERE a.crym = b.crym
+		AND a.pd_cd = b.pd_cd
+  		AND a.fatca_pd_clacd != '99'
+		AND a.crym = #crym#
+		AND a.csno = #csno#
+		AND a.cust_seq = #custSeq#
+		order by fatca_pd_clacd_nm, pd_knm, acno
+	</select>	
+	
+	
+	<!-- 법인고객 상세조회 - 탭(합산이력 상세) -->
+	<select id="selectCompAdupHistDetailBySmpsnId" resultClass="dbmap" parameterClass="map">
+	/** aciptarget.selectCompAdupHistDetailBySmpsnId */	
+		SELECT a.crym, a.csno,
+		       decode(a.crym, ' ', '', ( substr(a.crym, 0, 4) || '-' || substr(a.crym, 5))) as crym_fmt, /* 기준일자 format */
+			   (select vld_val_nm from TB_FTCD_CDDTL where cd_idtf_id = '801' and use_yn = 'Y' and crym = #crym# and vld_val = b.fatca_pd_clacd ) as fatca_pd_clacd_nm, /* 상품구분코드명 */
+			   b.pd_knm, /* 상품명 */
+		       substr(a.acno,0,length(a.acno)-4)||'****' as acno, /* 계좌번호 */
+		       a.curc, /* 통화코드 */
+		       to_char(a.acnt_balamt, 'FM999,999,999,999,999,990') as acnt_balamt, /* 계좌합계 */
+		       to_char(a.wc_cnvt_balamt, 'FM999,999,999,999,999,990') as wc_cnvt_balamt, /* 원화환산금액 */
+			   to_char(a.usd_cnvt_balamt, 'FM999,999,999,999,990.90') as usd_cnvt_balamt /* 미화환산금액 */
+		FROM TB_FTCM_ACNTBAS a,
+		     TB_FTCM_TRGETPDBAS b,
+		     TB_FTCM_ACIPRSLT c
+		WHERE a.crym = b.crym
+		AND a.pd_cd = b.pd_cd
+  		AND a.fatca_pd_clacd != '99'
+		AND a.crym = #crym#
+		AND a.cust_seq = #custSeq#
+		and a.crym = c.crym
+		AND a.csno = c.csno
+		and a.cust_seq = c.cust_seq
+		AND a.csno != #csno#
+		AND c.smpsn_id = #smpsnId#
+		order by fatca_pd_clacd_nm, pd_knm, acno
+	</select>	
+	
+	<select id="selectCompSmpsnId" resultClass="string" parameterClass="map">
+	/** aciptarget.selectCompSmpsnId */
+		select decode(smpsn_id,'~','0',smpsn_id) as smpsn_id
+		from TB_FTCM_ACIPRSLT 
+		where crym=#crym# 
+		and csno=#csno#
+		and cust_seq = #custSeq#
+	</select>
+	
+	<!-- 법인고객 상세조회 - 탭(보고이력 상세) -->
+	<select id="selectCompReptHistDetail" resultClass="dbmap" parameterClass="map">
+	/** aciptarget.selectCompReptHistDetail */	
+		SELECT a.crym, /* 기준일자 */
+		       decode(TRIM(a.crym), '', '', ( substr(a.crym, 0, 4) || '-' || substr(a.crym, 5))) as crym_fmt, /* 기준일자 format */
+		       #reptDtFmt# as rept_dt_fmt, /* 보고일자 format */
+		       a.csno, /* 고객번호 */
+		       a.smpsn_id, /* 동일인아이디 */
+		       a.cust_nacd, /* 고객국가코드 */
+		       a.fatca_copr_knm, /* 법인한글명 */
+		       a.fatca_copr_enm, /* 법인영문명 */
+		       a.fatca_copr_eng_addr, /* 법인주소 */
+		       decode(a.fatca_txpayr_no,a.fatca_txpayr_no,'0',substr(a.fatca_txpayr_no,0,7)||'******') as fatca_txpayr_no, /* 법인납세번호 */
+		       substr(b.acno,0,length(b.acno)-4)||'****' as acno, /* 계좌번호 */
+		       to_char(b.acnt_balamt, 'FM999,999,999,999,999,990') as acnt_balamt /* 계좌잔고 */
+		FROM TB_FTCM_REPTTRGETCOPRBAS a,
+			TB_FTCM_REPTTRGETACNTBAS b
+		WHERE a.crym = b.crym
+		AND a.csno = b.csno
+		AND a.cust_seq = b.cust_seq
+		AND a.crym = #crym#
+	    AND a.csno = #csno#
+		AND a.cust_seq = #custSeq#
+		UNION ALL
+		SELECT a.crym, 
+		       decode(TRIM(a.crym), '', '', ( substr(a.crym, 0, 4) || '-' || substr(a.crym, 5))) as crym_fmt, 
+		       #reptDtFmt# as rept_dt_fmt, 
+		       a.csno, 
+		       a.smpsn_id, 
+		       a.cust_nacd, 
+		       a.fatca_copr_knm,
+		       a.fatca_copr_enm,
+		       a.fatca_copr_eng_addr, 
+		       decode(a.fatca_txpayr_no,a.fatca_txpayr_no,'0',substr(a.fatca_txpayr_no,0,7)||'******') as fatca_txpayr_no, 
+		       substr(b.acno,0,length(b.acno)-4)||'****' as acno, 
+		       to_char(b.acnt_balamt, 'FM999,999,999,999,999,990') as acnt_balamt 
+		FROM TB_FTCM_REPTTRGETCOPRBAS a,
+			TB_FTCM_REPTTRGETACNTBAS b
+		WHERE a.crym = b.crym
+		  and a.csno = b.csno
+		  and a.cust_seq = b.cust_seq
+		  and a.smpsn_id = (SELECT decode(smpsn_id,'~','0',smpsn_id)
+						    FROM TB_FTCM_REPTTRGETCOPRBAS
+						    WHERE crym = #crym#
+						    AND csno = #csno#
+							AND cust_seq = #custSeq#
+							  )
+	</select>	
+	
+	
+	<!-- FATCA확인서 제출요청 이력 조회 -->
+	<select id="selectConfirmRequestHist" resultClass="dbmap" parameterClass="map">
+	/** aciptarget.selectConfirmRequestHist */	
+		SELECT * FROM (
+			SELECT ROWNUM_.* , ROWNUM AS RNUM FROM 
+			(
+				SELECT decode(TRIM(a.crym), '', '', ( substr(a.crym, 0, 4) || '-' || substr(a.crym, 5))) as crym_fmt, /* 기준일자 format */
+				       (SELECT vld_val_nm FROM TB_FTCD_CDDTL WHERE cd_idtf_id = '130' AND use_yn = 'Y' AND vld_val = a.fatca_sms_fw_dge AND crym = a.crym) AS sms_fw_dge, /* sms 발송차수 */
+				       to_char(to_date(decode(a.fw_dt, '', '', a.fw_dt),'yyyyMMdd'), 'yyyy-MM-dd') as fw_dt_fmt, /* 발송일자 format */
+				       a.csno, /* 고객번호 */
+				       a.cust_nm, /* 고객명 */
+				       sms_nti_mpno, /* 연락처 */
+				       sms_msg_cn, /* 내용 */
+				       count(*) over() as total_cnt
+				  FROM TB_FTCH_CFRRPTPRSTRQST a
+				 WHERE a.crym = #crym#		
+			      <isNotEmpty property="csno">
+			      AND a.csno = #csno#
+			      </isNotEmpty>	
+			      <isNotEmpty property="fatcaSmsFwDge">
+			      AND a.fatca_sms_fw_dge = #fatcaSmsFwDge#
+			      </isNotEmpty>	
+		      ORDER BY a.crym, a.csno, a.fw_dt
+			) ROWNUM_
+			WHERE   #pagingEnd# >= ROWNUM  
+		) WHERE RNUM > #pagingStart#
+	</select>
+	
+</sqlMap>

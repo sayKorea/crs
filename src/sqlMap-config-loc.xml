@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE sqlMapConfig PUBLIC "-//ibatis.apache.org//DTD SQL Map Config 2.0//EN"
+    "http://ibatis.apache.org/dtd/sql-map-config-2.dtd">
+
+<sqlMapConfig>
+
+	<settings enhancementEnabled="true" maxTransactions="20" maxRequests="32" maxSessions="10" useStatementNamespaces="true" />
+	<typeAlias alias="dbmap" type="fatca.common.util.FTCCiHashMap" />
+	<typeAlias alias="string" type="java.lang.String" />
+	<typeAlias alias="map" type="java.util.Map" />
+
+	<!-- typeHandler javaType="java.sql.Clob" callback="fatca.common.util.OracleCLOBTypeHandler"/> -->
+
+	<typeHandler javaType="java.util.Date" jdbcType="DATE" callback="fatca.common.util.FTCDateTypeHandler" />
+
+
+
+	<transactionManager type="JDBC">
+
+		<dataSource type="DBCP">
+			<property name="JDBC.Driver" value="oracle.jdbc.driver.OracleDriver" />
+			<property name="JDBC.ConnectionURL" value="jdbc:oracle:thin:@192.168.2.106:1521:fatca" />
+			<property name="JDBC.Username" value="fat008" />
+			<property name="JDBC.Password" value="oracle" />
+			<property name="JDBC.DefaultAutoCommit" value="true" />
+			<property name="maxActive" value="8" />
+			<property name="initialSize" value="2" />
+		</dataSource>
+
+		<!-- dataSource type="JNDI"> <property name="DataSource" value="FATDS" 
+			/> </dataSource -->
+
+	</transactionManager>
+
+	<!-- FATCA -->
+	<sqlMap resource="resources/fatca/FTCsystem_SqlMap.xml" />
+	<sqlMap resource="resources/fatca/FTCacipReady_SqlMap.xml" />
+	<sqlMap resource="resources/fatca/FTCacipMonitor_SqlMap.xml" />
+	<sqlMap resource="resources/fatca/FTCacipResult_SqlMap.xml" />
+	<sqlMap resource="resources/fatca/FTCacipPersonalTarget_SqlMap.xml" />
+	<sqlMap resource="resources/fatca/FTCacipCompanyTarget_SqlMap.xml" />
+	<sqlMap resource="resources/fatca/FTCacipReport_SqlMap.xml" />
+
+	<!-- Template 영역 -->
+	<sqlMap resource="resources/crs/Template_SqlMap.xml" />
+
+	<!-- CRS 영역 -->
+	<sqlMap resource="resources/crs/CrsSample_SqlMap.xml" />
+
+
+</sqlMapConfig>

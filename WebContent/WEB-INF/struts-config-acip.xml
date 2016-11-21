@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="euc-kr"?>
+<!DOCTYPE struts-config PUBLIC
+          "-//Apache Software Foundation//DTD Struts Configuration 1.2//EN"
+          "http://struts.apache.org/dtds/struts-config_1_2.dtd">
+<struts-config>
+	<data-sources />
+    <form-beans type="org.apache.struts.action.ActionFormBean" />
+    <global-exceptions />
+    <global-forwards type="org.apache.struts.action.ActionForward" />
+
+    <action-mappings type="org.apache.struts.action.ActionMapping">	
+ 		 		
+ 		<!-- 실사기준관리  -->			
+		<action path="/acipReady" type="fatca.acipready.action.FTCAcipReadyAction" scope="request" parameter="method" validate="false">			
+			<forward name="modify"				path="/fatca/acip_ready/ftc_basic_modify.jsp" />
+			<forward name="samepersonlist"		path="/fatca/acip_ready/ftc_same_person_list.jsp" />
+		</action>
+		
+		<!-- 개인(법인)고객 실사 대상자 조회  -->			
+		<action path="/acipTarget" type="fatca.aciptarget.action.FTCAcipTargetAction" scope="request" parameter="method" validate="false">			
+			<forward name="personallist"		path="/fatca/acip_target/ftc_personal_target_list.jsp" />
+			<forward name="personalview"		path="/fatca/acip_target/ftc_personal_view.jsp" />
+			<forward name="companylist"			path="/fatca/acip_target/ftc_company_target_list.jsp" />
+			<forward name="companyview"			path="/fatca/acip_target/ftc_company_view.jsp" />
+			<forward name="aduphistdetail"		path="/fatca/acip_target/ftc_target_detail.jsp" />
+			<forward name="confirmrequesthist"	path="/fatca/acip_target/ftc_confirm_request_history.jsp" />
+			<forward name="exceldown"			path="/ftc_excel_down.jsp" />
+		</action>
+		
+ 		
+ 		<!-- 실사결과관리  -->			
+		<action path="/acipResult" type="fatca.acipresult.action.FTCAcipResultAction" scope="request" parameter="method" validate="false">			
+			<forward name="question"			path="/fatca/acip_result/ftc_question_result_modify.jsp" />
+			<forward name="document"			path="/fatca/acip_result/ftc_document_result_modify.jsp" />
+			<forward name="gridpersonal"		path="/fatca/acip_result/ftc_personal_result_list.jsp" />
+			<forward name="gridcompany"			path="/fatca/acip_result/ftc_company_result_list.jsp" />
+			<forward name="maincomplete"		path="/fatca/acip_result/ftc_main_complete_modify.jsp" />
+			<forward name="branchresultlist"	path="/fatca/acip_result/ftc_branch_result_list.jsp" />
+			<forward name="exceldown"			path="/ftc_excel_down.jsp" />
+		</action>
+		
+		<!-- 보고관리  -->			
+		<action path="/acipReport" type="fatca.acipreport.action.FTCAcipReportAction" scope="request" parameter="method" validate="false">			
+			<forward name="personalreportlist"	path="/fatca/acip_report/ftc_personal_report_list.jsp" />
+			<forward name="companyreportlist"	path="/fatca/acip_report/ftc_company_report_list.jsp" />
+			<forward name="exceldown"			path="/ftc_excel_down.jsp" />
+		</action>
+		
+		
+		<!-- 모니터링  -->			
+		<action path="/acipMonitor" type="fatca.acipmonitor.action.FTCAcipMonitorAction" scope="request" parameter="method" validate="false">			
+			<forward name="monitor"				path="/fatca/acip_monitor/ftc_branch_status_monitor.jsp" />
+			<forward name="year"				path="/fatca/acip_monitor/ftc_acip_year_history.jsp" />
+			<forward name="exceldown"			path="/ftc_excel_down.jsp" />
+		</action>		
+				
+    </action-mappings>
+    
+</struts-config>

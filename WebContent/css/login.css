@@ -1,0 +1,24 @@
+@charset "utf-8";
+
+body.login {background:#f7f9fa}
+div.login_wrap {height:100%}
+/* Center Align */
+div.login_main {width:500px;height:400px;position:absolute;left:50%;top:50%;margin-left:-250px;margin-top:-250px;}
+/* Logo / System Name */
+div.login_main .top {height:50px;}
+div.login_main .top .left{float:left;}
+div.login_main .top .right{float:right;padding-top:22px}
+/* Wrap */
+div.login_main .body {background:#ebf2f8;border:10px solid #d6dfe6;background:#fff;}
+div.login_main .contents {padding:50px 40px 40px;background:url(../images/login/login_slogan4.png) no-repeat 40px center}
+div.login_main .form_wrap {margin:20px 0 20px 220px;}
+/* Center Align */
+div.login_main .contents input {width:168px;height:24px;line-height:24px\9;border:1px solid #8d9ba6;outline: none;padding-left:10px;}
+div.login_main .contents .password input {}
+
+div.login_main .id {margin-bottom:15px;}
+div.login_main .select {margin-bottom:15px;width:180px;height:24px;border:1px solid #8d9ba6;outline: none;padding-left:10px;}
+div.login_main .btn {margin-top:20px;}
+/*div.login_main .btn a {font-size:14px;font-weight:bold;line-height:53px;text-align:center;width:180px;display:block;color:#fff;background-color:#3670b3}*/
+div.login_main .footer {background:#5b6873;height:50px;}
+div.login_main .copyright {padding:19px 0 0 19px;font-family:Verdana;font-size:11px;color:#fff}

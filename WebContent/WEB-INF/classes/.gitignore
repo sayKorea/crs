@@ -1,0 +1,9 @@
+/commons-logging.properties
+/crs/
+/fatca.properties
+/fatca/
+/log4j.properties
+/resources/
+/spy.properties
+/sqlMap-config-loc.xml
+/sqlMap-config.xml

@@ -1,0 +1,957 @@
+<?xml version="1.0" encoding="EUC-KR"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="system">
+
+	<!-- SAMPLE START -->
+	
+	<!-- select -->	
+	<select id="selectSample" resultClass="dbmap" parameterClass="map">
+	<![CDATA[	
+		SELECT * FROM employee 
+		WHERE ID=#strID# 
+		AND master_eprise_code=1 
+		AND isFire='N'
+	]]>
+	</select>
+	
+	<!-- select paging -->
+	<select id="listSample" resultClass="dbmap" parameterClass="map">
+	<![CDATA[
+		SELECT * FROM (
+			SELECT ROWNUM_.* , ROWNUM AS RNUM FROM 
+			(
+				SELECT e.*
+					 ,COUNT(*) OVER() AS total_cnt 
+				FROM employee e 
+				WHERE ID=#strID# 
+				AND master_eprise_code=1 
+				AND isFire='N'
+			    ORDER BY $preferredOrder$ $preferredSort$
+			) ROWNUM_
+			WHERE #pagingEnd# >= ROWNUM  
+		) WHERE RNUM > #pagingStart#  				    
+	]]>
+	</select>
+	
+	
+	<!--  insert -->
+	<insert id="insertSample" parameterClass="map">
+		INSERT INTO EMPLOYEE (
+		   eprise_code, employee_code, master_eprise_code,
+		   id, password, employee_name, jumin_no,
+		   regist_date, modify_date) 
+		VALUES ( #epriseCode#, #employeeCode#, #masterEpriseCode#,
+		   #id#, TRIM(#password#), #employeeName#, #juminNo#,
+		   sysdate, sysdate)
+	</insert>
+	
+	<!--  update -->
+	<update id="updateSample" parameterClass="map">	       
+		UPDATE EMPLOYEE
+		SET    eprise_code	= #epriseCode#,
+		       master_eprise_code	= #masterEpriseCode#,
+		       id    = #id#,
+		       password  = #password]#,
+		       employee_name   = #employeeName#,
+		       jumin_no       = #juminNo#,
+		       modify_date      = sysdate
+		WHERE  employee_code = #employeeCode#		
+	</update>
+		
+	<!--  delete -->		
+	<delete id="deleteSample" parameterClass="map">
+		DELETE FROM EMPLOYEE 
+		WHERE employee_code = #employeeCode#
+	</delete>
+	
+	<!--  ibatis usage example -->
+	
+	<sql id="pager_top">
+		SELECT * FROM (
+			SELECT ROWNUM_.* , ROWNUM AS RNUM FROM (
+	</sql>		
+	
+	<sql id="pager_bottom">
+		) ROWNUM_
+			WHERE #pagingEnd# >= ROWNUM  
+				) WHERE RNUM > #pagingStart# 
+	</sql>
+	
+	<select id="selectXXXXX" parameterClass="map" resultClass="dbmap">
+		<include refid="pager_top"/>
+			SELECT ru.rel_seq, ru.rel_type, u.user_name
+		  	FROM rel_user ru, users u
+		 WHERE ru.use_yn = 'Y'
+		   AND ru.user_id = u.user_id
+		   AND ru.user_type = '900'	
+		   AND u.user_name like #userName#
+		   <isNotEqual property="relType" compareValue="0">
+		   AND ru.rel_type = #relType#
+		   </isNotEqual>
+		<include refid="pager_bottom"/>
+	</select>
+	
+	<!--  get combo box -->
+	<select id="comboSample" resultClass="dbmap" parameterClass="map">
+		SELECT code code_id, 
+			 code_name code_name
+		FROM CODE
+		WHERE eprise_code = #epriseCode#
+		AND code_kind = #codeKind#
+	</select>
+	
+	<!-- SAMPLE END -->
+	
+	<resultMap id="userInfo" class="fatca.system.info.FTCUserInfo">
+		<result column="USER_ENOB" property="userEnob" jdbcType="VARCHAR" />
+		<result column="USER_ENNM" property="userEnnm" jdbcType="VARCHAR" />		
+		<result column="SLS_BRNO" property="slsBrno" jdbcType="VARCHAR" />
+		<result column="SLS_BRNM" property="slsBrnm" jdbcType="VARCHAR" />		
+		<result column="FATCA_AUTH_CD" property="fatcaAuthCd" jdbcType="VARCHAR" />
+		<result column="FATCA_AUTH_NM" property="fatcaAuthNm" jdbcType="VARCHAR" />
+		<result column="SLS_BRNO" property="selSlsBrno" jdbcType="VARCHAR" />
+		<result column="SLS_BRNM" property="selSlsBrnm" jdbcType="VARCHAR" />
+		<result column="CRYM" property="selCrym" jdbcType="VARCHAR" />
+		<result column="CONG_YN" property="congYn" jdbcType="VARCHAR" />
+	</resultMap>
+	
+	
+	<!--  로그인 체크  -->
+	<select id="checkLogin" resultClass="string" parameterClass="map">
+	/** system.checkLogin */
+		SELECT max(user_enob) user_enob 
+		FROM TB_FTCM_USRAUTH
+		<isNotEmpty property="ID">
+		WHERE USER_ENOB=#userId#
+		</isNotEmpty>
+		<isEmpty property="ID">
+		WHERE USER_ENOB=#userId#
+		AND SLS_BRNO=#password#
+		</isEmpty>		
+	</select>
+	
+	<!--  로그인 정보  다수권한으로 등록이 가능할때-->
+	<select id="setUserInfo_old" resultMap="userInfo" parameterClass="map">
+		SELECT
+	  		user_enob, user_ennm, sls_brno, sls_brnm, min(fatca_auth_cd) fatca_auth_cd, crym,
+	  		(SELECT VLD_VAL_NM FROM TB_FTCD_CDDTL
+			WHERE USE_YN = 'Y'
+			AND CRYM = (select max(crym) from TB_FTCM_ACIPCRI)
+			AND CD_IDTF_ID = '131'
+			AND vld_val = min(fatca_auth_cd)) fatca_auth_nm
+		FROM (
+		SELECT 
+				   USER_ENOB, 
+				   (select USER_NM from TB_COAM_HRUSERBAS where ENOB = a.USER_ENOB) USER_ENNM,
+				   SLS_BRNO, 
+				   (select BRC_NM from TB_COAM_BRBAS where BRNO = a.SLS_BRNO and  clo_brc_yn='N') SLS_BRNM,
+				   FATCA_AUTH_CD, 
+				   (select max(crym) from TB_FTCM_acipcri) crym
+				FROM TB_FTCM_USRAUTH a		
+				WHERE USER_ENOB = #userId#)
+		GROUP BY user_enob, user_ennm, sls_brno, sls_brnm, crym
+	</select>
+	
+	<!--  로그인 정보  상위권한으로 될때. 현재.-->
+	<select id="setUserInfo" resultMap="userInfo" parameterClass="map">
+	/** system.setUserInfo */
+	SELECT
+			x.USER_ENOB, 
+		   (select USER_NM from TB_COAM_HRUSERBAS where ENOB = x.USER_ENOB) USER_ENNM, 
+		   x.sls_brno, 
+		   (select BRC_NM from TB_COAM_BRBAS  
+		    where BRNO = x.sls_brno 
+		    and clo_brc_yn='N') SLS_BRNM,
+		   FATCA_AUTH_CD, 
+		   (SELECT VLD_VAL_NM FROM TB_FTCD_CDDTL
+			WHERE USE_YN = 'Y'
+			AND CRYM = (select max(crym) from TB_FTCM_ACIPCRI)
+			AND CD_IDTF_ID = '131'
+			AND vld_val = x.fatca_auth_cd) fatca_auth_nm,
+		   (select max(crym) from TB_FTCM_acipcri) crym,
+		   decode((SELECT VLD_VAL_NM FROM TB_FTCD_CDDTL
+			WHERE USE_YN = 'Y'
+			AND CRYM = '000000'
+			AND CD_IDTF_ID = 'ENV_SET'
+			AND vld_val = 'CONGIP'),#loginIpAddr#,'Y') cong_yn
+	FROM (			
+			SELECT 
+			   min(a.USER_ENOB) as user_enob, 
+			   min((select hrc_blg_brno from tb_coam_hruserbas where enob=a.user_enob)) as SLS_BRNO, 
+			   min(a.fatca_auth_cd) as FATCA_AUTH_CD
+			FROM TB_FTCM_USRAUTH a		
+			WHERE USER_ENOB = #userId#
+	) x	
+	</select>
+	
+	
+	
+	<!--  공통 콤보 : 기준년월 -->
+	<select id="comboCrym" resultClass="dbmap" parameterClass="map">
+	/** system.comboCrym */
+		SELECT crym code_id, 
+			 substr(crym,0,4)||'-'||substr(crym,5,2) code_name
+		FROM TB_FTCM_acipcri
+		order by crym desc
+	</select>
+		
+	<!--  공통 콤보 : SMS 발송날짜를 이용한 열을 행으로 바꾸기 sample-->
+	<select id="cobSample" resultClass="dbmap" parameterClass="map">
+	/** system.cobSample */
+	<![CDATA[	
+		select  code code_id,
+		   substr(code,0,4)||'-'||substr(code,5,2)||'-'||substr(code,7,2) code_name
+		from (
+			select decode(rnum,1,FTM_FW_DT,2,SCTM_FW_DT,3,TDTM_FW_DT,4,FRTM_FW_DT) code 
+			from 	
+			(SELECT 
+			   FTM_FW_DT, SCTM_FW_DT, TDTM_FW_DT, FRTM_FW_DT
+			FROM TB_FTCM_ACIPCRI 
+			where crym = #crym#) a,
+			(select rownum rnum from dict
+			 where rownum <5) b
+		 )
+	]]>	 
+	</select>
+	
+	<!--  공통 콤보 : 공통코드 -->
+	<select id="selectCommonCode" resultClass="dbmap" parameterClass="map">
+	/** system.selectCommonCode */
+		SELECT 
+			VLD_VAL code_id, 
+		   VLD_VAL_NM code_name
+		FROM TB_FTCD_CDDTL dtl
+		WHERE USE_YN = 'Y'
+		AND CRYM = nvl(#crym#,(select max(crym) from TB_FTCM_acipcri))
+		AND CD_IDTF_ID = #cdIdtfId#
+		ORDER BY VLD_VAL
+	</select>
+	
+	<select id="selectUnderCommonCode" resultClass="dbmap" parameterClass="map">
+	/** system.selectUnderCommonCode */
+	<![CDATA[	
+		SELECT 
+			VLD_VAL code_id, 
+		   VLD_VAL_NM code_name
+		FROM TB_FTCD_CDDTL dtl
+		WHERE USE_YN = 'Y'
+		AND CRYM = nvl(#crym#,(select max(crym) from TB_FTCM_acipcri))
+		AND CD_IDTF_ID = #cdIdtfId#		
+		and vld_val > #underVal#
+		ORDER BY VLD_VAL
+		]]>	 
+	</select>
+	
+	<select id="selectBetweenCommonCode" resultClass="dbmap" parameterClass="map">
+	/** system.selectBetweenCommonCode */
+	<![CDATA[	
+		SELECT 
+			VLD_VAL code_id, 
+		   VLD_VAL_NM code_name
+		FROM TB_FTCD_CDDTL dtl
+		WHERE USE_YN = 'Y'
+		AND CRYM = nvl(#crym#,(select max(crym) from TB_FTCM_acipcri))
+		AND CD_IDTF_ID = #cdIdtfId#		
+		and vld_val between #stVal# and #edVal#
+		ORDER BY VLD_VAL
+		]]>	 
+	</select>
+
+	<select id="selectCodeList" resultClass="dbmap" parameterClass="map">
+	/** system.selectCodeList */
+		SELECT * FROM (
+			SELECT ROWNUM_.* , ROWNUM AS RNUM
+			FROM 
+			(
+				select
+					  ma.crym, ma.cd_idtf_id, ma.cd_idtf_knm,
+					  dt.vld_val, dt.vld_val_nm, dt.upper_vld_val,
+					  dt.use_yn,
+					  COUNT(*) OVER() AS totalcnt	  	  
+				from tb_ftcc_CDCRI ma,
+					 TB_FTCD_CDDTL dt
+				where ma.crym = #crym# 
+				and ma.crym = dt.crym
+				<isNotEmpty property="cdIdtfId">
+				and ma.cd_idtf_id = #cdIdtfId#
+				</isNotEmpty>
+				and ma.cd_idtf_id = dt.cd_idtf_id
+				and ma.cd_idtf_knm like '%'||#cdIdtfKnm#||'%'
+				<isNotEmpty property="vldValNm">
+				and ma.cd_idtf_id in (select cd_idtf_id from tb_ftcd_cddtl where vld_val_nm like '%'||#vldValNm#||'%')
+				</isNotEmpty>
+				ORDER BY $preferredOrder$ $preferredSort$, cd_idtf_knm, vld_val		
+			) ROWNUM_
+			WHERE #pagingEnd# >= ROWNUM  
+		) WHERE RNUM > #pagingStart# 	
+
+	</select>
+	
+	<select id="selectCodeInfo" resultClass="dbmap" parameterClass="map">
+	/** system.selectCodeInfo */
+		<![CDATA[
+		SELECT 
+			CRYM, CD_IDTF_ID, VLD_VAL, 
+		   VLD_VAL_NM, USE_YN, FST_REG_DTL_DTTI, 
+		   FST_RGPR_ENOB, FST_REG_BRNO, LT_CH_DTL_DTTI, 
+		   LT_CHPR_ENOB, LT_CH_BRNO
+		FROM TB_FTCD_CDDTL
+		WHERE CRYM = #crym#
+		AND CD_IDTF_ID = #cdIdtfId#
+		ORDER BY CD_IDTF_ID
+        ]]>
+	</select>	
+	
+	<select id="selectEnvSet" resultClass="string" parameterClass="map">
+	/** system.selectEnvSet */
+		<![CDATA[
+		SELECT 
+			upper(VLD_VAL_NM) vld_val_nm
+		FROM TB_FTCD_CDDTL
+		WHERE CD_IDTF_ID = 'ENV_SET'
+		AND VLD_VAL = #envName#
+		AND crym='000000'
+        ]]>
+	</select>	
+	
+	<select id="selectMnuAuthList" resultClass="dbmap" parameterClass="map">
+	/** system.selectMnuAuthList */
+		SELECT 
+			MNU_ID, 
+			MNU_NM, 
+			USE_YN,
+		   	to_char(LT_CH_DTL_DTTI,'yyyy-mm-dd') chpr_dtti,
+			lt_chpr_enob, 
+		   (select USER_NM from TB_COAM_HRUSERBAS where ENOB = a.lt_chpr_enob)  chpr_ennm
+		FROM TB_FTCM_MNUAUTH a
+		WHERE fatca_auth_cd = #fatcaAuthCd#
+		ORDER BY MNU_NM, MNU_ID
+	</select>	
+	
+	<select id="selectBranchList" resultClass="dbmap" parameterClass="map">
+	/** system.selectBranchList */
+		SELECT * FROM (
+			SELECT ROWNUM_.* , ROWNUM AS RNUM FROM 
+			(	SELECT BRNO,
+		      		   BRC_NM,
+		      		   ddd||'-'||tlxcno||'-'||tlndno tel,
+		      		   (select user_enob from tb_ftcm_usrauth where sls_brno=a.brno and fatca_auth_cd='03') rppr_enob,
+		      		   COUNT(*) OVER() AS total_cnt
+		    	FROM TB_COAM_BRBAS a
+		    	WHERE clo_brc_yn = 'N'
+		    	<isNotEmpty property="slsBrno">	
+		    	AND BRNO = #slsBrno#	
+		    	</isNotEmpty>
+		    	<isNotEmpty property="slsBrnm">
+		    	AND BRC_NM like '%'||#slsBrnm#||'%'
+		    	</isNotEmpty>	
+			) ROWNUM_
+			WHERE #pagingEnd# >= ROWNUM  
+		) WHERE RNUM > #pagingStart#  		
+	</select>
+		
+	<select id="selectEmpList_OLD" resultClass="dbmap" parameterClass="map">
+		SELECT * FROM (
+			SELECT ROWNUM_.* , ROWNUM AS RNUM FROM 
+			(	SELECT ENOB,
+			      USER_NM,
+			      hrc_blg_brno,
+			      (select BRC_NM FROM TB_COAM_BRBAS WHERE  clo_brc_yn='N' and brno=a.hrc_blg_brno ) brnm,
+			      COUNT(*) OVER() AS total_cnt
+			    FROM TB_COAM_HRUSERBAS a
+				WHERE 1=1
+				<isNotEmpty property="enob">	
+		    	AND ENOB = #enob#	
+		    	</isNotEmpty>
+				<isNotEmpty property="userNm">
+		    	AND USER_NM like '%'||#userNm#||'%'
+		    	</isNotEmpty>	
+			) ROWNUM_
+			WHERE #pagingEnd# >= ROWNUM  
+		) WHERE RNUM > #pagingStart#  	
+	</select>
+	
+	<select id="selectEmpList" resultClass="dbmap" parameterClass="map">
+	/** system.selectEmpList */
+		SELECT * FROM (
+			SELECT ROWNUM_.* , ROWNUM AS RNUM FROM 
+			(select x.*, COUNT(*) OVER() AS total_cnt
+			from 
+			(	SELECT user_enob as ENOB,
+			      (select USER_NM from TB_COAM_HRUSERBAS where ENOB = a.user_enob) as USER_NM,
+			      fatca_auth_cd,
+			      (select vld_val_nm from tb_ftcd_cddtl 
+					where cd_idtf_id='131' and vld_val=a.fatca_auth_cd and crym=(select max(crym) from tb_ftcm_acipcri)) fatca_auth_nm,
+			      sls_brno as hrc_blg_brno,
+			      (select BRC_NM FROM TB_COAM_BRBAS WHERE  clo_brc_yn='N' and brno=a.sls_brno ) brnm
+			    FROM TB_FTCM_USRAUTH a
+				WHERE sls_brno = #slsBrno#
+				<isNotEmpty property="enob">	
+		    	AND USER_ENOB = #enob#	
+		    	</isNotEmpty>
+		    ) x	
+		    <isNotEmpty property="userNm">
+	    	where USER_NM like '%'||#userNm#||'%'
+	    	</isNotEmpty>					
+	    	order by hrc_blg_brno, user_nm, enob	
+			) ROWNUM_			
+			WHERE #pagingEnd# >= ROWNUM  
+		) WHERE RNUM > #pagingStart#  	
+	</select>
+	
+	<select id="selectCustList" resultClass="dbmap" parameterClass="map">
+	/** system.selectCustList */
+		SELECT * FROM (
+			SELECT ROWNUM_.* , ROWNUM AS RNUM FROM 
+			(	SELECT distinct crym, csno, cust_nm, sms_nti_mpno,
+						rnno, rnno_dvcd,
+						to_char(FST_REG_DTL_DTTI,'yyyy-mm-dd') reg_dtl_fmt,
+						COUNT(*) OVER() AS total_cnt   
+				FROM TB_FTCM_CUSTBAS
+				WHERE CRYM = #crym#
+				AND cust_seq = '0000'
+				<isNotEmpty property="csno">	
+		    	AND csno = #csno#	
+		    	</isNotEmpty>
+				<isNotEmpty property="csnm">
+		    	AND cust_nm like '%'||#csnm#||'%'
+		    	</isNotEmpty>
+		    	order by csno, cust_nm
+			) ROWNUM_
+			WHERE #pagingEnd# >= ROWNUM  
+		) WHERE RNUM > #pagingStart#  	
+	</select>
+	
+	<select id="selectCustListODCR" resultClass="dbmap" parameterClass="map">
+	/** system.selectCustListODCR */
+		SELECT * FROM (
+			SELECT ROWNUM_.* , ROWNUM AS RNUM FROM 
+			(	SELECT csno, cust_nm, 
+						rnno, rnno_dvcd,
+						to_char(FST_REG_DTL_DTTI,'yyyy-mm-dd') reg_dtl_fmt,
+						COUNT(*) OVER() AS total_cnt   
+				FROM (  select *
+		                from TB_FTCM_CUSTBAS
+		                where crym = (select max(crym) from TB_FTCM_ACIPCRI)
+		             )
+				WHERE 1=1
+				<isNotEmpty property="csno">	
+		    	and (csno = #csno#
+					or rnno = #csno#
+					or rnno = '000'||#csno#) 
+		    	</isNotEmpty>
+				<isNotEmpty property="csnm">
+		    	AND cust_nm like '%'||#csnm#||'%'
+		    	</isNotEmpty>
+		    	order by cust_nm, rnno
+			) ROWNUM_
+			WHERE #pagingEnd# >= ROWNUM  
+		) WHERE RNUM > #pagingStart#  	
+	</select>
+	
+	
+	
+	<select id="selectCoprListOLD" resultClass="dbmap" parameterClass="map">
+	/** system.selectCoprListOLD */
+		SELECT * FROM (
+			SELECT ROWNUM_.* , ROWNUM AS RNUM FROM 
+			(	SELECT distinct crym, csno, cust_seq, cust_nm, sms_nti_mpno,
+						rnno, rnno_dvcd,
+						to_char(FST_REG_DTL_DTTI,'yyyy-mm-dd') reg_dtl_fmt,
+						COUNT(*) OVER() AS total_cnt   
+				FROM TB_FTCM_CUSTBAS
+				WHERE CRYM = #crym#
+				<isEqual property="custType" compareValue="com">
+				AND fatca_tpcd = '02'
+				</isEqual>				
+				<isEqual property="custType" compareValue="per">
+				AND fatca_tpcd = '01'
+				</isEqual>
+				<isNotEmpty property="csno">	
+		    	AND csno = #csno#	
+		    	</isNotEmpty>
+				<isNotEmpty property="csnm">
+		    	AND cust_nm like '%'||#csnm#||'%'
+		    	</isNotEmpty>
+		    	order by csno, cust_seq, cust_nm
+			) ROWNUM_
+			WHERE #pagingEnd# >= ROWNUM  
+		) WHERE RNUM > #pagingStart#  	
+	</select>
+	
+	<select id="selectCoprList" resultClass="dbmap" parameterClass="map">
+	/** system.selectCoprList */
+		SELECT * FROM (
+			SELECT ROWNUM_.* , ROWNUM AS RNUM FROM 
+			(	SELECT a.csno, a.cust_seq, a.cust_nm, 
+						a.rnno, a.rnno_dvcd,
+						to_char(a.FST_REG_DTL_DTTI,'yyyy-mm-dd') reg_dtl_fmt,
+						COUNT(*) OVER() AS total_cnt   
+				FROM TB_FTCM_CUSTBAS a
+				WHERE a.CRYM = ( SELECT MAX(CRYM)
+				                FROM TB_FTCM_ACIPCRI )
+				<isNotEmpty property="csno">	
+		    	and (a.csno = #csno#
+					or a.rnno = #csno#
+					or a.rnno = '000'||#csno#) 	
+		    	</isNotEmpty>
+				<isNotEmpty property="csnm">
+		    	AND a.cust_nm like '%'||#csnm#||'%'
+		    	</isNotEmpty>
+		    	<isEqual property="custType" compareValue="per">
+		    	AND a.cust_seq = '0000'
+		    	</isEqual>
+		    	<isEqual property="custType" compareValue="com">
+		    	AND a.cust_seq = '0000'
+		    	</isEqual>
+		    	order by a.cust_nm, a.rnno
+			) ROWNUM_
+			WHERE #pagingEnd# >= ROWNUM  
+		) WHERE RNUM > #pagingStart#  	
+	</select>
+		
+	<update id="updateCustSls" parameterClass="map">
+	/** system.updateCustSls */
+		UPDATE TB_FTCM_ACIPRSLT
+		SET    SLS_BRNO                 = #setNo#
+		WHERE  CRYM                     = #crym#
+		AND    CSNO                     = #csno#
+		AND    CUST_SEQ                 = #custSeq#
+	</update>
+	<update id="updateCustRppr" parameterClass="map">
+	/** system.updateCustRppr */
+		UPDATE TB_FTCM_ACIPRSLT
+		SET    FATCA_ACIP_RPPR_ENOB     = #setNo#
+		WHERE  CRYM                     = #crym#
+		AND    CSNO                     = #csno#
+		AND    CUST_SEQ                 = #custSeq#
+	</update>
+	<update id="updateCustCgp" parameterClass="map">
+	/** system.updateCustCgp */
+		UPDATE TB_FTCM_ACIPRSLT
+		SET    FATCA_ACIP_CGP_ENOB      = #setNo#
+		WHERE  CRYM                     = #crym#
+		AND    CSNO                     = #csno#
+		AND    CUST_SEQ                 = #custSeq#
+	</update>	
+	<update id="updateCustRel" parameterClass="map">
+	/** system.updateCustRel */
+		UPDATE TB_FTCM_ACIPRSLT
+		SET    FATCA_CUST_REL_MNGR_ENOB = #setNo#
+		WHERE  CRYM                     = #crym#
+		AND    CSNO                     = #csno#
+		AND    CUST_SEQ                 = #custSeq#
+	</update>
+	
+	<update id="updateCustSlsRpprCgpRel" parameterClass="map">
+	/** system.updateCustSlsRpprCgpRel */
+		UPDATE TB_FTCM_ACIPRSLT
+		SET    FATCA_ACIP_RPPR_ENOB     = (select max(user_enob) from tb_ftcm_usrauth where sls_brno=#setNo# and fatca_auth_cd='03')
+			  ,FATCA_ACIP_CGP_ENOB      = '~'
+			  ,FATCA_CUST_REL_MNGR_ENOB = '~'
+		WHERE  CRYM                     = #crym#
+		AND    CSNO                     = #csno#
+		AND    CUST_SEQ                 = #custSeq#
+	</update>
+	
+	<select id="selectBranchSession" resultClass="dbmap" parameterClass="map">
+	/** system.selectBranchSession */
+	<![CDATA[
+		SELECT BRNO, BRC_NM,
+				brno as code_id, 
+				'['||brno||'] '||brc_nm as code_name,
+				 ddd||'-'||tlxcno||'-'||tlndno tel  
+		FROM TB_COAM_BRBAS 
+		WHERE clo_brc_yn='N'
+		and brno != '999'
+		order by BRNO
+	]]>
+	</select>
+	
+	<select id="selectBranchForRel" resultClass="dbmap" parameterClass="map">
+	/** system.selectBranchSession */
+	<![CDATA[
+		SELECT BRNO, BRC_NM,
+				brno as code_id, 
+				'['||brno||'] '||brc_nm as code_name,
+				 ddd||'-'||tlxcno||'-'||tlndno tel  
+		FROM TB_COAM_BRBAS a,
+			TB_FTCM_USRAUTH b 
+		WHERE a.brno = b.sls_brno 
+		and a.clo_brc_yn='N' 
+		and b.user_enob = #userId#
+		order by brc_nm
+	]]>
+	</select>
+	
+	<select id="selectEmpSession" resultClass="dbmap" parameterClass="map">
+	/** system.selectEmpSession */
+		SELECT user_enob as enob, 
+				(select USER_NM from TB_COAM_HRUSERBAS where ENOB = a.user_enob) ennm
+		FROM (		
+			SELECT 
+				distinct user_enob
+			FROM TB_FTCM_USRAUTH
+			ORDER BY user_enob
+		) a	
+	</select>
+	
+	<select id="selectCustNmOLD" resultClass="string" parameterClass="map">
+	/** system.selectCustNm */
+		SELECT max(cust_nm) as cust_nm   
+		FROM TB_FTCM_CUSTBAS
+		WHERE crym = #crym# 
+		AND csno = #csno# 	
+	</select>
+	
+	<select id="selectCustNm" resultClass="string" parameterClass="map">
+	/** system.selectCustNm */
+		SELECT max(cust_nm) as cust_nm   
+		FROM TB_FTCM_CUSTBAS
+		WHERE crym = (select max(crym) from TB_FTCM_ACIPCRI)
+		AND (csno = #csno#
+			or rnno = #csno#
+			or rnno = '000'||#csno#) 	
+	</select>
+	
+	
+	<select id="selectExistEmp" resultClass="string" parameterClass="map">
+	/** system.selectExistEmp */
+		SELECT 
+			USER_ENOB
+		FROM TB_FTCM_USRAUTH
+		WHERE user_enob = #setNo#
+		and fatca_auth_cd = #fatcaAuthCd#
+	</select>
+	
+	<insert id="insertAuthEmp" parameterClass="map">
+	/** system.insertAuthEmp */
+		INSERT INTO TB_FTCM_USRAUTH (
+		   USER_ENOB, SLS_BRNO, FATCA_AUTH_CD, 
+		   FST_REG_DTL_DTTI, FST_RGPR_ENOB, FST_REG_BRNO, 
+		   LT_CH_DTL_DTTI, LT_CHPR_ENOB, LT_CH_BRNO) 
+		VALUES ( #setNo#, #slsBrno#, #fatcaAuthCd#,
+		    systimestamp, #enob#, #brno#,
+		    systimestamp, #enob#, #brno#)
+	</insert>
+	
+	
+	<select id="selectUsrAuthList" resultClass="dbmap" parameterClass="map">
+	/** system.selectUsrAuthList */
+		SELECT 
+			USER_ENOB, 
+			(select USER_NM from TB_COAM_HRUSERBAS where ENOB = a.user_enob) user_ennm,
+			SLS_BRNO, 
+			(select BRC_NM FROM TB_COAM_BRBAS WHERE clo_brc_yn='N' and brno=a.sls_brno ) brnm,
+			FATCA_AUTH_CD,
+			(select vld_val_nm from tb_ftcd_cddtl 
+			where cd_idtf_id='131' and vld_val=a.fatca_auth_cd and crym=(select max(crym) from tb_ftcm_acipcri)) fatca_auth_nm, 
+		   FST_REG_DTL_DTTI, FST_RGPR_ENOB, FST_REG_BRNO, 
+		   to_char(LT_CH_DTL_DTTI,'yyyy-mm-dd') chpr_dtti, 
+		   LT_CHPR_ENOB, 
+		   decode(a.lt_chpr_enob,'0000000',(SELECT VLD_VAL_NM 
+                                        FROM  TB_FTCD_CDDTL 
+                                        WHERE CRYM = '201406' 
+                                        AND CD_IDTF_ID = '131'
+                                        AND VLD_VAL='00'),(select USER_NM from TB_COAM_HRUSERBAS where ENOB = a.lt_chpr_enob)) chpr_ennm,
+		   LT_CH_BRNO,
+		   COUNT(*) OVER() AS total_cnt   
+		FROM TB_FTCM_USRAUTH a
+		WHERE 1=1
+		<isNotEqual property="slsBrno" compareValue="999">
+		and sls_brno = #slsBrno#
+		</isNotEqual>
+		<isNotEmpty property="fatcaAuthCd">
+		and fatca_auth_cd = #fatcaAuthCd#
+		</isNotEmpty>
+		<isNotEmpty property="userEnob">
+		and user_enob = #userEnob#
+		</isNotEmpty>
+		order by fatca_auth_cd, brnm, user_ennm	
+	</select>
+	
+	
+	<select id="selectNoAuthEmpList" resultClass="dbmap" parameterClass="map">
+	/** system.selectNoAuthEmpList */
+		SELECT ENOB,
+	      USER_NM,
+	      hrc_blg_brno,
+	      (select BRC_NM FROM TB_COAM_BRBAS WHERE clo_brc_yn='N' and brno=a.hrc_blg_brno ) brnm,
+	      COUNT(*) OVER() AS total_cnt   
+	    FROM TB_COAM_HRUSERBAS a
+		WHERE hrc_blg_brno = #slsBrno#
+		AND enob not in (select user_enob from tb_ftcm_usrauth where sls_brno=#slsBrno#)
+		<isNotEmpty property="enob">	
+    	AND ENOB = #enob#	
+    	</isNotEmpty>
+		<isNotEmpty property="userNm">
+    	AND USER_NM like '%'||#userNm#||'%'
+    	</isNotEmpty>	
+    	order by user_nm
+	</select>
+	
+	
+	<insert id="insertUsrAuth" parameterClass="map">
+	/** system.insertUsrAuth */
+		INSERT INTO TB_FTCM_USRAUTH (
+		   USER_ENOB, SLS_BRNO, FATCA_AUTH_CD, 
+		   FST_REG_DTL_DTTI, FST_RGPR_ENOB, FST_REG_BRNO, 
+		   LT_CH_DTL_DTTI, LT_CHPR_ENOB, LT_CH_BRNO) 
+		VALUES ( #userEnob#, #slsBrno#, #fatcaAuthCd#,
+		    systimestamp, #enob#, #brno#,
+		    systimestamp, #enob#, #brno#)
+	</insert>
+	
+	<delete id="deleteUsrAuth" parameterClass="map">
+	/** system.deleteUsrAuth */
+		DELETE FROM TB_FTCM_USRAUTH
+		WHERE user_enob = #userEnob#
+	</delete>
+			
+	<update id="updateMenuAuth" parameterClass="map">
+	/** system.updateMenuAuth */
+		UPDATE TB_FTCM_MNUAUTH
+		SET    USE_YN               = #useYn#,
+			   LT_CH_DTL_DTTI       = systimestamp,
+			   LT_CHPR_ENOB         = #enob#,
+			   LT_CH_BRNO           = #brno#
+		WHERE  FATCA_AUTH_CD        = #fatcaAuthCd#
+		AND    MNU_ID               = #mnuId#
+	</update>
+	
+	<insert id="insertMenuAuthHis" parameterClass="map">
+	/** system.insertMenuAuthHis */
+		INSERT INTO TB_FTCI_MNUAUTH (
+			FATCA_AUTH_CD, 
+			MNU_ID, 
+			USE_YN, 
+			REG_DTTI, 
+			MNU_NM,
+			FST_REG_DTL_DTTI, 
+			FST_RGPR_ENOB, 
+			FST_REG_BRNO,
+			LT_CH_DTL_DTTI, 
+			LT_CHPR_ENOB, 
+			LT_CH_BRNO) 
+		VALUES (
+			#fatcaAuthCd#, 
+			#mnuId#, 
+			#useYn#, 
+			sysdate, 
+			(SELECT MNU_NM FROM TB_FTCM_MNUAUTH WHERE FATCA_AUTH_CD = #fatcaAuthCd# AND MNU_ID = #mnuId#),
+		    systimestamp, 
+		    #enob#, 
+		    #brno#,
+		    systimestamp, 
+		    #enob#, 
+		    #brno#)
+	</insert>
+	
+	<insert id="insertCnttLog" parameterClass="map">
+	/** system.insertCnttLog */
+		INSERT INTO TB_FTCL_CNNTLOG (
+		   LOGIN_DTL_DTTI, 
+		   CNNT_PRSN_ENOB, USER_NM, LOGIN_IP_ADDR, LOGIN_LOGOUT_DVCD,
+		   FST_REG_DTL_DTTI, FST_RGPR_ENOB, FST_REG_BRNO, 
+		   LT_CH_DTL_DTTI, LT_CHPR_ENOB, LT_CH_BRNO) 
+		VALUES ( systimestamp, 
+			#cnntPrsnEnob#, #userNm#, #loginIpAddr#, #loginLogoutDvcd#,
+		    systimestamp, #cnntPrsnEnob#, #brno#,
+		    systimestamp, #cnntPrsnEnob#, #brno#)
+	</insert>
+	
+	<insert id="insertAuthLog" parameterClass="map">
+	/** system.insertAuthLog */
+		INSERT INTO TB_FTCL_AUTHCHLOG (
+		   REG_DTL_DTTI, 
+		   DELR_ENOB, DELR_NM, USER_IP_ADDR, 
+		   CGP_ENOB, 
+		   CGP_NM, 
+		   AUTH_NM, 
+		   AUTH_CH_RSC, CHDT,
+		   FST_REG_DTL_DTTI, FST_RGPR_ENOB, FST_REG_BRNO, 
+		   LT_CH_DTL_DTTI, LT_CHPR_ENOB, LT_CH_BRNO) 
+		VALUES ( systimestamp, 
+			#enob#, #ennm#, #userIpAddr#, 
+			#userEnob#, 
+			(select USER_NM from TB_COAM_HRUSERBAS where ENOB = #userEnob#),
+			<isEmpty property="fatcaAuthCd">
+			(select vld_val_nm from tb_ftcd_cddtl 
+			where cd_idtf_id='131'  
+			and crym=(select max(crym) from tb_ftcm_acipcri)
+			and vld_val=(select fatca_auth_cd from tb_ftcm_usrauth where user_enob=#userEnob#)),
+			</isEmpty> 
+			<isNotEmpty property="fatcaAuthCd">
+			(select vld_val_nm from tb_ftcd_cddtl 
+			where cd_idtf_id='131' and vld_val=#fatcaAuthCd# and crym=(select max(crym) from tb_ftcm_acipcri)),
+			</isNotEmpty> 
+			#authChRsc#, to_char(sysdate,'yyyymmdd'),
+		    systimestamp, #enob#, #brno#,
+		    systimestamp, #enob#, #brno#)
+	</insert>
+	
+	<insert id="insertTrnsLogWithCust" parameterClass="map">
+	/** system.insertTrnsLogWithCust */
+		INSERT INTO TB_FTCL_TRNSLOG (
+		   TRNS_LOG_DTL_DTTI, 
+		   DELR_ENOB, DELR_NM, USER_IP_ADDR, 
+		   TRNS_ID, 
+		   TRNS_NM, 
+		   RNNO, CUST_NM, 
+		   INQ_RSC, 
+		   INQ_RSCN, 
+		   CSNO, CUST_SEQ,
+		   FST_REG_DTL_DTTI, FST_RGPR_ENOB, FST_REG_BRNO, 
+		   LT_CH_DTL_DTTI, LT_CHPR_ENOB, LT_CH_BRNO) 
+		(select 
+			systimestamp, 
+			#enob#, #ennm#, #userIpAddr#, 
+			#mnuId#, 
+			(select max(mnu_nm) from tb_ftcm_mnuauth where mnu_id=#mnuId#), 
+			a.rnno, a.cust_nm,
+			#inqRsc#,
+			(select vld_val_nm from tb_ftcd_cddtl 
+			where cd_idtf_id='INQ_RSC' and vld_val=#inqRsc# and crym=(select max(crym) from tb_ftcm_acipcri)),
+			a.csno, a.cust_seq,
+			systimestamp, #enob#, #brno#,
+		    systimestamp, #enob#, #brno#
+		from tb_ftcm_custbas a
+		where csno =#csno#
+		and cust_seq = #custSeq#
+		and crym = #crym#)
+	</insert>
+	
+	<insert id="insertTrnsLog" parameterClass="map">
+	/** system.insertTrnsLog */
+		INSERT INTO TB_FTCL_TRNSLOG (
+		   TRNS_LOG_DTL_DTTI, 
+		   DELR_ENOB, DELR_NM, USER_IP_ADDR, 
+		   TRNS_ID, 
+		   TRNS_NM, 
+		   RNNO, CUST_NM, 
+		   INQ_RSC, 
+		   INQ_RSCN, 
+		   CSNO, CUST_SEQ,
+		   FST_REG_DTL_DTTI, FST_RGPR_ENOB, FST_REG_BRNO, 
+		   LT_CH_DTL_DTTI, LT_CHPR_ENOB, LT_CH_BRNO) 
+		VALUES ( systimestamp, 
+			#enob#, #ennm#, #userIpAddr#, 
+			#mnuId#, 
+			(select max(mnu_nm) from tb_ftcm_mnuauth where mnu_id=#mnuId#), 
+			'', '',
+			#inqRsc#,
+			(select vld_val_nm from tb_ftcd_cddtl 
+			where cd_idtf_id='INQ_RSC' and vld_val=#inqRsc# and crym=(select max(crym) from tb_ftcm_acipcri)),
+			'', '',
+			systimestamp, #enob#, #brno#,
+		    systimestamp, #enob#, #brno#)
+	</insert>
+	
+	<select id="selectClsnYn" resultClass="string" parameterClass="string">
+	/** system.selectClsnYn */
+		SELECT 
+			clsn_yn
+		FROM TB_FTCM_ACIPCRI a
+		WHERE crym = #crym#
+	</select>	
+	
+	<select id="execSelectQuery" remapResults="true" resultClass="dbmap" parameterClass="map">
+		<![CDATA[
+			$queryStr$
+		]]>	
+	</select>	
+	
+	<insert id="execInsertQuery" parameterClass="map">
+		<![CDATA[
+		$queryStr$
+		]]>	
+	</insert>	
+	
+	<insert id="insertCommonCodeByUploadOld" parameterClass="map">
+	/** system.insertCommonCodeByUploadOld */
+		INSERT INTO TB_FTCC_CDCRI (
+		   CRYM, CD_IDTF_ID, CD_IDTF_KNM, USE_YN, 
+		   FST_REG_DTL_DTTI, FST_RGPR_ENOB, FST_REG_BRNO, 
+		   LT_CH_DTL_DTTI, LT_CHPR_ENOB, LT_CH_BRNO) 
+		VALUES ( #crym#, #cdIdtfId#, #cdIdtfKnm#, #useYn#,
+		    systimestamp, #enob#, #brno#,
+		    systimestamp, #enob#, #brno#)
+	</insert>
+	<insert id="insertCommonCodeDetailByUploadOld" parameterClass="map">
+	/** system.insertCommonCodeDetailByUploadOld */
+		INSERT INTO TB_FTCD_CDDTL (
+			   CRYM, CD_IDTF_ID, VLD_VAL, 
+			   VLD_VAL_NM, UPPER_VLD_VAL, USE_YN, 
+			   FST_REG_DTL_DTTI, FST_RGPR_ENOB, FST_REG_BRNO, 
+			   LT_CH_DTL_DTTI, LT_CHPR_ENOB, LT_CH_BRNO)
+		VALUES ( #crym#, #cdIdtfId#, #vldVal#,
+			#vldValNm#, #upperVldVal#, #useYn#,
+		    systimestamp, #enob#, #brno#,
+		    systimestamp, #enob#, #brno#)
+	</insert>
+	
+	<insert id="insertCommonCodeByUpload" parameterClass="map">
+	/** system.insertCommonCodeByUpload */
+		INSERT INTO TB_FTCC_CDCRI (
+		   CRYM, CD_IDTF_ID, CD_IDTF_KNM, USE_YN, 
+		   FST_REG_DTL_DTTI, FST_RGPR_ENOB, FST_REG_BRNO, 
+		   LT_CH_DTL_DTTI, LT_CHPR_ENOB, LT_CH_BRNO) 
+		VALUES ( #crym#, #data1#, #data2#, #data6#,
+		    systimestamp, #enob#, #brno#,
+		    systimestamp, #enob#, #brno#)
+	</insert>
+	<insert id="insertCommonCodeDetailByUpload" parameterClass="map">
+	/** system.insertCommonCodeDetailByUpload */
+		INSERT INTO TB_FTCD_CDDTL (
+			   CRYM, CD_IDTF_ID, VLD_VAL, 
+			   VLD_VAL_NM, UPPER_VLD_VAL, USE_YN, 
+			   FST_REG_DTL_DTTI, FST_RGPR_ENOB, FST_REG_BRNO, 
+			   LT_CH_DTL_DTTI, LT_CHPR_ENOB, LT_CH_BRNO)
+		VALUES ( #crym#, #data1#, #data3#,
+			#data4#, #data5#, #data6#,
+		    systimestamp, #enob#, #brno#,
+		    systimestamp, #enob#, #brno#)
+	</insert>
+	
+	<delete id="deleteCommonCodeByUpload" parameterClass="map">
+	/** system.deleteCommonCodeByUpload */
+		DELETE FROM TB_FTCC_CDCRI 
+		WHERE crym = #crym#
+	</delete>
+	<delete id="deleteCommonCodeDetailByUpload" parameterClass="map">
+	/** system.deleteCommonCodeDetailByUpload */
+		DELETE FROM TB_FTCD_CDDTL 
+		WHERE crym = #crym#
+	</delete>
+	
+	<select id="selectCustCountGARBAGE" resultClass="string" parameterClass="map">
+	/** system.selectCustCount */	
+		SELECT count(csno) cnt
+		FROM tb_ftcm_custbas
+		WHERE crym = #crym#
+		and (csno = #csno#
+			or rnno = #csno#
+			or rnno = '000'||#csno#) 
+	</select>
+	
+	<select id="selectCustCount" resultClass="dbmap" parameterClass="map">
+	/** system.selectCustCount */	
+		SELECT a.cust_nm, a.csno, a.rnno, a.cust_seq
+		FROM TB_FTCM_CUSTBAS a
+		WHERE a.CRYM = ( SELECT MAX(CRYM)
+				                FROM TB_FTCM_ACIPCRI
+				       )  
+		and (a.csno = #csno#
+			or a.rnno = #csno#
+			or a.rnno = '000'||#csno#)
+		<isEqual property="custType" compareValue="per">
+    	AND a.cust_seq = '0000'
+    	</isEqual>
+    	<isEqual property="custType" compareValue="com">
+    	AND a.cust_seq = '0000'
+    	</isEqual> 
+	</select>
+	
+	
+</sqlMap>

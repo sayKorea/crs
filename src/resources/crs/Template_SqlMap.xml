@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="EUC-KR"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="template">
+	<select id="getComplete" resultClass="dbmap" parameterClass="map">
+		SELECT 'Comlete' AS MESSAGE FROM DUAL
+	</select>
+	
+	<select id="getCodeList" resultClass="dbmap" parameterClass="map">
+		SELECT 	  A.TEMPNO
+				, A.CODE
+				, A.NAME 
+		FROM TEMPLATE A
+	</select>
+	
+	<select id="getGridList" resultClass="dbmap" parameterClass="map">
+		SELECT 	  A.TEMPNO
+				, A.CODE
+				, A.NAME 
+		FROM TEMPLATE A
+		WHERE 1=1
+		<isNotEmpty property="code">
+			AND A.CODE = #code#
+		</isNotEmpty>
+		<isNotEmpty property="name">
+			AND A.NAME LIKE '%'||#name#||'%'
+		</isNotEmpty>
+	</select>
+	
+	<insert id="insertCode" parameterClass="map">
+		INSERT INTO TEMPLATE
+		( CODE, NAME) 
+		VALUES
+		( #code#, #name#)
+	</insert>
+	
+	<update id="updateCode" parameterClass="map">
+		UPDATE TEMPLATE SET
+			NAME = #name#
+	</update>
+	
+	<delete id="deleteCode" parameterClass="map">
+		DELETE TEMPLATE
+		WHERE CODE = #code#
+	</delete>
+</sqlMap>
